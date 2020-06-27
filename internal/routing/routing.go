@@ -3,7 +3,7 @@ package routing
 import (
 	"net/http"
 
-	"github.com/GoPlayAndFun/Distributed-File-System/internal/lockservice"
+	"github.com/GoPlayAndFun/Lockey/internal/lockservice"
 	"github.com/gorilla/mux"
 )
 

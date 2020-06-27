@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/GoPlayAndFun/Distributed-File-System/internal/lockservice"
+	"github.com/GoPlayAndFun/Lockey/internal/lockservice"
 )
 
 func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
