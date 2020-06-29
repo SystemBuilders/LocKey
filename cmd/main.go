@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/GoPlayAndFun/Lockey/internal/lockservice"
-	"github.com/GoPlayAndFun/Lockey/internal/node"
+	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
+	"github.com/GoPlayAndFun/LocKey/internal/node"
 	"github.com/rs/zerolog"
 )
 

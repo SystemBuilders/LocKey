@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/GoPlayAndFun/Lockey/internal/lockservice"
+	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
 )
 
 func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
@@ -23,7 +23,10 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	w.Write([]byte("lock acquired"))
 }
 
 func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {

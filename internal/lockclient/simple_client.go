@@ -1,6 +1,6 @@
 package lockclient
 
-import "github.com/GoPlayAndFun/Lockey/internal/lockservice"
+import "github.com/GoPlayAndFun/LocKey/internal/lockservice"
 
 var _ Config = (*SimpleConfig)(nil)
 
