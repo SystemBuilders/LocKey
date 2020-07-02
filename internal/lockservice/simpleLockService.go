@@ -36,6 +36,12 @@ func (sd *SimpleDescriptor) ID() string {
 	return sd.FileID
 }
 
+func NewSimpleDescriptor(FileID string) *SimpleDescriptor {
+	return &SimpleDescriptor{
+		FileID: FileID,
+	}
+}
+
 // NewSimpleLockService creates and returns a new lock service ready to use.
 func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
 	safeLockMap := &SafeLockMap{
