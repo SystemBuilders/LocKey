@@ -11,20 +11,32 @@ var _ Cache = (*LRUCache)(nil)
 // maintained that way by all the operating functions.
 //
 // GetElement and PutElement inherently implement a method
-// to rank
+// to rank the elements on the basis of frequency.
 type LRUCache struct {
 	capacity int
 	size     int
 	full     bool
 	m        map[interface{}]bool
-	// linked list goes here
+	dll      *DoublyLinkedList
 }
 
-// GetElement gets
+// NewLRUCache creates a new LRUCache of provided size.
+func NewLRUCache(size int) *LRUCache {
+	return &LRUCache{
+		capacity: 0,
+		size:     size,
+		full:     false,
+		m:        make(map[interface{}]bool),
+		dll:      NewDoublyLinkedList(),
+	}
+}
+
+// GetElement gets an element from the cache.
 func (lru *LRUCache) GetElement(element interface{}) error {
 	panic("TODO")
 }
 
+// PutElement inserts an element in the cache.
 func (lru *LRUCache) PutElement(element interface{}) error {
 	panic("TODO")
 }
