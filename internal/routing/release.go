@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
@@ -15,11 +16,27 @@ func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	desc := &lockservice.SimpleDescriptor{
-		FileID: string(body),
+	var req interface{}
+	err = json.Unmarshal(body, &req)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	err = ls.Release(desc)
+	data := req.(map[string]interface{})
+
+	for k, v := range data {
+		switch v := v.(type) {
+		case string:
+			if k == "FileID" {
+				desc := &lockservice.SimpleDescriptor{
+					FileID: string(v),
+				}
+				err = ls.Release(desc)
+			}
+		}
+	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
