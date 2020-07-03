@@ -12,6 +12,21 @@ type SafeLockMap struct {
 	Mutex   sync.Mutex
 }
 
+// SimpleConfig implements Config.
+type SimpleConfig struct {
+	IPAddr   string
+	PortAddr string
+}
+
+func (scfg *SimpleConfig) IP() string {
+	return scfg.IPAddr
+}
+
+// Port returns the port from SimpleConfig.
+func (scfg *SimpleConfig) Port() string {
+	return scfg.PortAddr
+}
+
 var _ LockService = (*SimpleLockService)(nil)
 
 // SimpleLockService is a lock service that implements LockService.
