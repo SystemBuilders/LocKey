@@ -16,7 +16,7 @@ func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	var req interface{}
+	var req lockservice.Request
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -24,18 +24,14 @@ func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	data := req.(map[string]interface{})
+	desc := &lockservice.SimpleDescriptor{
+		FileID: req.FileID,
+	}
+	err = ls.Release(desc)
 
-	for k, v := range data {
-		switch v := v.(type) {
-		case string:
-			if k == "FileID" {
-				desc := &lockservice.SimpleDescriptor{
-					FileID: string(v),
-				}
-				err = ls.Release(desc)
-			}
-		}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if err != nil {

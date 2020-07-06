@@ -18,6 +18,10 @@ type SimpleConfig struct {
 	PortAddr string
 }
 
+type Request struct {
+	FileID string `json:"FileID"`
+}
+
 func (scfg *SimpleConfig) IP() string {
 	return scfg.IPAddr
 }
@@ -49,6 +53,13 @@ type SimpleDescriptor struct {
 // ID represents the distinguishable ID of the descriptor.
 func (sd *SimpleDescriptor) ID() string {
 	return sd.FileID
+}
+
+func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
+	return &SimpleConfig{
+		IPAddr:   IPAddr,
+		PortAddr: PortAddr,
+	}
 }
 
 func NewSimpleDescriptor(FileID string) *SimpleDescriptor {

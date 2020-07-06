@@ -24,10 +24,6 @@ type SimpleClient struct {
 	config SimpleConfig
 }
 
-type Request struct {
-	FileID lockservice.Descriptors `json:"FileID"`
-}
-
 // IP returns the IP from SimpleConfig.
 func (scfg *SimpleConfig) IP() string {
 	return scfg.IPAddr
@@ -46,7 +42,9 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/acquire"
 	endPoint = strings.TrimSpace(endPoint)
 
-	requestJson, err := json.Marshal(d)
+	testData := lockservice.Request{FileID: d.ID()}
+	requestJson, err := json.Marshal(testData)
+
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
 	if err != nil {
 		return err
@@ -76,7 +74,8 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 
-	requestJson, err := json.Marshal(d)
+	testData := lockservice.Request{FileID: d.ID()}
+	requestJson, err := json.Marshal(testData)
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")
 

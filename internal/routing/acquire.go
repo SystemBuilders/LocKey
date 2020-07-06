@@ -8,6 +8,8 @@ import (
 	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
 )
 
+// type Request = lockservice.Request
+
 func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -16,7 +18,7 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	var req interface{}
+	var req lockservice.Request
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -24,19 +26,10 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	data := req.(map[string]interface{})
-
-	for k, v := range data {
-		switch v := v.(type) {
-		case string:
-			if k == "FileID" {
-				desc := &lockservice.SimpleDescriptor{
-					FileID: string(v),
-				}
-				err = ls.Acquire(desc)
-			}
-		}
+	desc := &lockservice.SimpleDescriptor{
+		FileID: req.FileID,
 	}
+	err = ls.Acquire(desc)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
