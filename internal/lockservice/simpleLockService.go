@@ -12,6 +12,25 @@ type SafeLockMap struct {
 	Mutex   sync.Mutex
 }
 
+// SimpleConfig implements Config.
+type SimpleConfig struct {
+	IPAddr   string
+	PortAddr string
+}
+
+type LockRequest struct {
+	FileID string `json:"FileID"`
+}
+
+func (scfg *SimpleConfig) IP() string {
+	return scfg.IPAddr
+}
+
+// Port returns the port from SimpleConfig.
+func (scfg *SimpleConfig) Port() string {
+	return scfg.PortAddr
+}
+
 var _ LockService = (*SimpleLockService)(nil)
 
 // SimpleLockService is a lock service that implements LockService.
@@ -34,6 +53,19 @@ type SimpleDescriptor struct {
 // ID represents the distinguishable ID of the descriptor.
 func (sd *SimpleDescriptor) ID() string {
 	return sd.FileID
+}
+
+func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
+	return &SimpleConfig{
+		IPAddr:   IPAddr,
+		PortAddr: PortAddr,
+	}
+}
+
+func NewSimpleDescriptor(FileID string) *SimpleDescriptor {
+	return &SimpleDescriptor{
+		FileID: FileID,
+	}
 }
 
 // NewSimpleLockService creates and returns a new lock service ready to use.
