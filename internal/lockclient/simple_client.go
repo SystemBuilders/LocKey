@@ -57,16 +57,14 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	if err != nil {
 		return (err)
 	}
-	// The client must close the response body when finished with it, from official documentation
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // Release makes a HTTP call to the lockserver and acquires the lock.
@@ -85,17 +83,15 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	if err != nil {
 		return (err)
 	}
-	// The client must close the response body when finished with it, from official documentation
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
-	} else {
-		return nil
 	}
 
+	return nil
 }
 
 // StartService starts the lockservice LocKey.

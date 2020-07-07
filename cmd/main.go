@@ -14,6 +14,6 @@ func main() {
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	ls := lockservice.NewSimpleLockService(log)
 
-	scfg := lockservice.NewSimpleConfig("127.0.0.1", "61111")
+	scfg := lockservice.NewSimpleConfig("127.0.0.1", "1234")
 	node.Start(ls, *scfg)
 }

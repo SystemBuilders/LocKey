@@ -1,9 +1,7 @@
 package lockclient
 
 import (
-	"fmt"
 	"os"
-	"syscall"
 	"testing"
 	"time"
 
@@ -20,13 +18,12 @@ func TestAcquireandRelease(t *testing.T) {
 	scfg := lockservice.NewSimpleConfig("127.0.0.1", "1234")
 	ls := lockservice.NewSimpleLockService(log)
 
-	quit := make(chan bool)
+	quit := make(chan bool, 1)
 	go func() {
 		node.Start(ls, *scfg)
 		for {
 			select {
 			case <-quit:
-				syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 				return
 			default:
 
@@ -35,6 +32,7 @@ func TestAcquireandRelease(t *testing.T) {
 
 	}()
 
+	// Server takes some time to start
 	time.Sleep(100 * time.Millisecond)
 	t.Run("acquire 'test'", func(t *testing.T) {
 		sc := SimpleClient{config: SimpleConfig{IPAddr: "http://127.0.0.1", PortAddr: "1234"}}
@@ -61,11 +59,7 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 
 	})
-	fmt.Println("hello1")
 	quit <- true
-	node.StopChannel()
-
-	fmt.Println("hello2")
 	return
 
 }

@@ -16,8 +16,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var Stop = make(chan bool)
-
 // Start begins the node's operation as a http server.
 func Start(ls *lockservice.SimpleLockService, scfg lockservice.SimpleConfig) error {
 
@@ -49,35 +47,15 @@ func gracefulShutdown(server *http.Server) {
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM)
 
 	// Block until we receive our signal.
+	<-interruptChan
 
-	for {
-		select {
-		case <-Stop:
-			// Create a deadline to wait for currently serving items.
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			server.Shutdown(ctx)
+	// Create a deadline to wait for currently serving items.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	server.Shutdown(ctx)
 
-			log.Println("Shutting down")
-			os.Exit(0)
-
-		case <-interruptChan:
-			// Create a deadline to wait for currently serving items.
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			server.Shutdown(ctx)
-
-			log.Println("Shutting down")
-			os.Exit(0)
-		default:
-
-		}
-	}
-
-}
-
-func StopChannel() {
-	Stop <- true
+	log.Println("Shutting down")
+	os.Exit(0)
 }
 
 func checkValidPort(port string) error {
