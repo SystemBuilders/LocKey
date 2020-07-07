@@ -11,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/GoPlayAndFun/LocKey/internal/lockclient"
 	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
 	"github.com/GoPlayAndFun/LocKey/internal/routing"
 	"github.com/gorilla/mux"
 )
 
 // Start begins the node's operation as a http server.
-func Start(ls *lockservice.SimpleLockService, scfg lockservice.SimpleConfig) error {
+func Start(ls *lockservice.SimpleLockService, scfg lockclient.SimpleConfig) error {
 
 	IP := scfg.IP()
 	port := scfg.Port()

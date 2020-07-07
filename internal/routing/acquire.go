@@ -1,14 +1,11 @@
 package routing
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
 )
-
-// type Request = lockservice.Request
 
 func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
 
@@ -18,17 +15,10 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	var req lockservice.LockRequest
-	err = json.Unmarshal(body, &req)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	desc := &lockservice.SimpleDescriptor{
-		FileID: req.FileID,
+		FileID: string(body),
 	}
+
 	err = ls.Acquire(desc)
 
 	if err != nil {
@@ -47,16 +37,8 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
-	var req lockservice.LockRequest
-	err = json.Unmarshal(body, &req)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	desc := &lockservice.SimpleDescriptor{
-		FileID: req.FileID,
+		FileID: string(body),
 	}
 	if ls.CheckAcquired(desc) {
 		w.Write([]byte("checkAcquire success"))
