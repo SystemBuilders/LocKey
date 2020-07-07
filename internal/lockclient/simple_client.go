@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
 )
@@ -40,7 +39,6 @@ var _ Client = (*SimpleClient)(nil)
 // The errors invloved may be due the HTTP errors or the lockservice errors.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/acquire"
-	endPoint = strings.TrimSpace(endPoint)
 
 	testData := lockservice.LockRequest{FileID: d.ID()}
 	requestJson, err := json.Marshal(testData)
