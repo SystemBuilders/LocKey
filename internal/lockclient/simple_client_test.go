@@ -41,7 +41,6 @@ func TestAcquireandRelease(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q want %q", got, want)
 		}
-
 	})
 	t.Run("release 'test'", func(t *testing.T) {
 		sc := SimpleClient{config: SimpleConfig{IPAddr: "http://127.0.0.1", PortAddr: "1234"}}
@@ -53,7 +52,6 @@ func TestAcquireandRelease(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q want %q", got, want)
 		}
-
 	})
 	quit <- true
 	return
