@@ -18,7 +18,7 @@ type SimpleConfig struct {
 	PortAddr string
 }
 
-type Request struct {
+type LockRequest struct {
 	FileID string `json:"FileID"`
 }
 

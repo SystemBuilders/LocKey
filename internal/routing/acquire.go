@@ -18,7 +18,7 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	var req lockservice.Request
+	var req lockservice.LockRequest
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -47,8 +47,16 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
+	var req lockservice.LockRequest
+	err = json.Unmarshal(body, &req)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	desc := &lockservice.SimpleDescriptor{
-		FileID: string(body),
+		FileID: req.FileID,
 	}
 	if ls.CheckAcquired(desc) {
 		w.Write([]byte("checkAcquire success"))
