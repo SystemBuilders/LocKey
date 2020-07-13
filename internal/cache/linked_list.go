@@ -19,11 +19,11 @@ type LinkedList interface {
 	// InsertNodeToLeft inserts a node to the left of the given node,
 	// with the key provided. It returns the pointer to the node
 	// inserted into the linked list.
-	InsertNodeToLeft(node Node, key Key) Node
+	InsertNodeToLeft(node Node, key Key)
 	// InsertNodeToRight inserts a node to the right of the given node,
 	// with the key provided. It returns the pointer to the node
 	// inserted tothe linked list.
-	InsertNodeToRight(node Node, key Key) Node
+	InsertNodeToRight(node Node, key Key)
 	// DeleteNode deletes the node provided as the argument from the
 	// linked list.
 	DeleteNode(Node)

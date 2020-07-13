@@ -5,33 +5,37 @@ import "testing"
 func Test_DLL(t *testing.T) {
 	dllNode := NewDoublyLinkedList()
 
-	dllNode.InsertNodeToRight(nil, &SimpleKey{10})
+	dllNode.InsertNodeToRight(nil, &SimpleKey{1})
+	dllNode.PrintLinkedList()
 
-	if dllNode.Head.Key().Data() != 10 {
-		t.Errorf("Required value 10, got %d", dllNode.Head.Key())
+	if dllNode.Head.Key().Data() != 1 {
+		t.Errorf("Required value 1, got %d", dllNode.Head.Key())
 	}
 
-	dllNode.InsertNodeToRight(dllNode.Head, &SimpleKey{20})
-	dllNode.InsertNodeToRight(dllNode.Head, &SimpleKey{30})
-	dllNode.InsertNodeToRight(dllNode.Head, &SimpleKey{40})
-	dllNode.InsertNodeToRight(dllNode.Head, &SimpleKey{50})
-
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{2})
 	dllNode.PrintLinkedList()
 
-	newNode := dllNode.Head.Right().Right()
-
-	dllNode.InsertNodeToLeft(newNode, &SimpleKey{60})
-	dllNode.InsertNodeToLeft(newNode, &SimpleKey{70})
-
+	dllNode.DeleteNode(dllNode.Head.Right())
 	dllNode.PrintLinkedList()
 
-	dllNode.DeleteNode(dllNode.Head)
-	dllNode.DeleteNode(dllNode.Head)
-
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{1})
 	dllNode.PrintLinkedList()
 
-	dllNode.InsertNodeToRight(dllNode.Head, &SimpleKey{80})
-	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{90})
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{3})
+	dllNode.PrintLinkedList()
 
+	dllNode.DeleteNode(dllNode.Head.Right().Right())
+	dllNode.PrintLinkedList()
+
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{2})
+	dllNode.PrintLinkedList()
+
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{4})
+	dllNode.PrintLinkedList()
+
+	dllNode.DeleteNode(dllNode.Head.Right().Right().Right())
+	dllNode.PrintLinkedList()
+
+	dllNode.InsertNodeToLeft(dllNode.Head, &SimpleKey{1})
 	dllNode.PrintLinkedList()
 }

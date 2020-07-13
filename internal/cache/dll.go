@@ -18,6 +18,13 @@ func (sk *SimpleKey) Data() int {
 	return sk.Value
 }
 
+// NewSimpleKey returns a new SimpleKey of the given value.
+func NewSimpleKey(val int) *SimpleKey {
+	return &SimpleKey{
+		Value: val,
+	}
+}
+
 // Assert that *DLLNode implements Node.
 var _ Node = (*DLLNode)(nil)
 
@@ -72,14 +79,14 @@ func (dll *DoublyLinkedList) CreateNode() Node {
 }
 
 // InsertNodeToLeft inserts a node with given value to the left of the given node.
-func (dll *DoublyLinkedList) InsertNodeToLeft(node Node, key Key) Node {
-	if node == nil {
+func (dll *DoublyLinkedList) InsertNodeToLeft(node Node, key Key) {
+	if node == nil || node.(*DLLNode) == nil {
 		// If the node to be inserted on is nil, assign the newNode to the same and return.
 		newNode := dll.CreateNode()
 		newNode.(*DLLNode).NodeKey = key.(*SimpleKey)
 		// Since the DLL was empty before, this will be the Head node too.
 		dll.Head = newNode
-		return newNode
+		return
 	}
 	if node.Left() == nil {
 		newNode := dll.CreateNode()
@@ -89,7 +96,7 @@ func (dll *DoublyLinkedList) InsertNodeToLeft(node Node, key Key) Node {
 		if node.(*DLLNode) == dll.Head {
 			dll.Head = newNode
 		}
-		return newNode
+		return
 	}
 	newNode := dll.CreateNode()
 	newNode.(*DLLNode).NodeKey = key.(*SimpleKey)
@@ -100,23 +107,22 @@ func (dll *DoublyLinkedList) InsertNodeToLeft(node Node, key Key) Node {
 
 	leftNode.(*DLLNode).RightNode = newNode
 	newNode.(*DLLNode).RightNode = node
-	return newNode
 }
 
 // InsertNodeToRight inserts a node with the given value to the right of the given node.
-func (dll *DoublyLinkedList) InsertNodeToRight(node Node, key Key) Node {
-	if node == nil {
+func (dll *DoublyLinkedList) InsertNodeToRight(node Node, key Key) {
+	if node == nil || node.(*DLLNode) == nil {
 		newNode := dll.CreateNode()
 		newNode.(*DLLNode).NodeKey = key.(*SimpleKey)
 		dll.Head = newNode
-		return newNode
+		return
 	}
 	if node.Right() == nil {
 		newNode := dll.CreateNode()
 		newNode.(*DLLNode).NodeKey = key.(*SimpleKey)
 		node.(*DLLNode).RightNode = newNode
 		newNode.(*DLLNode).LeftNode = node
-		return newNode
+		return
 	}
 	newNode := dll.CreateNode()
 	newNode.(*DLLNode).NodeKey = key.(*SimpleKey)
@@ -128,7 +134,6 @@ func (dll *DoublyLinkedList) InsertNodeToRight(node Node, key Key) Node {
 
 	rightNode.(*DLLNode).LeftNode = newNode
 	newNode.(*DLLNode).LeftNode = node
-	return newNode
 }
 
 // DeleteNode deletes the provided node.
@@ -136,15 +141,29 @@ func (dll *DoublyLinkedList) DeleteNode(node Node) {
 	if node == nil {
 		log.Println("Node is nil, can't be deleted")
 	}
-
-	leftNode := node.(*DLLNode).LeftNode
-	rightNode := node.(*DLLNode).RightNode
+	// dll.PrintLinkedList()
+	leftNode := node.Left()
+	rightNode := node.Right()
 
 	if node == dll.Head {
 		dll.Head = rightNode
 	}
-
+	// fmt.Println("X")
+	// fmt.Println(dll.Head.Key())
+	// fmt.Println("X")
+	// if leftNode != nil { //&& leftNode.Right() != nil {
+	// 	fmt.Println(leftNode.Key())
+	// 	fmt.Println("Y")
+	// 	fmt.Println(node.Key())
+	// 	// fmt.Println(leftNode.Right().Key())
+	// }
+	// fmt.Println("X")
+	// fmt.Println(rightNode)
+	// fmt.Println("X")
 	if leftNode != nil {
+		if leftNode.Right() != nil {
+			fmt.Println(leftNode.Right().Key())
+		}
 		leftNode.(*DLLNode).RightNode = rightNode
 		if rightNode != nil {
 			rightNode.(*DLLNode).LeftNode = leftNode
@@ -154,17 +173,29 @@ func (dll *DoublyLinkedList) DeleteNode(node Node) {
 			rightNode.(*DLLNode).LeftNode = nil
 		}
 	}
+	// dll.PrintLinkedList()
 }
 
 // PrintLinkedList prints the given linked list from head to tail order.
 func (dll *DoublyLinkedList) PrintLinkedList() {
 	head := dll.Head
+	var tail *DLLNode
 	for {
 		if head == nil {
 			break
 		}
 		fmt.Printf("%d-> ", head.Key())
+		tail = head.(*DLLNode)
 		head = head.(*DLLNode).RightNode
 	}
 	fmt.Println("NULL")
+
+	for {
+		if tail == dll.Head {
+			break
+		}
+		fmt.Printf("%d-> ", tail.Key())
+		tail = tail.LeftNode.(*DLLNode)
+	}
+	fmt.Printf("%d-> NULL\n\n\n", tail.Key())
 }
