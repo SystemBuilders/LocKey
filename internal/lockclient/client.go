@@ -1,6 +1,6 @@
 package lockclient
 
-import "github.com/GoPlayAndFun/LocKey/internal/lockservice"
+import "github.com/SystemBuilders/LocKey/internal/lockservice"
 
 // Client describes a client that can be used to interact with
 // the Lockey lockservice. The client can start the lockservice

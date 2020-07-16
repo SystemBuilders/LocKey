@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
-	"github.com/GoPlayAndFun/LocKey/internal/node"
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
+	"github.com/SystemBuilders/LocKey/internal/node"
 
 	"github.com/rs/zerolog"
 )
