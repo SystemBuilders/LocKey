@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
-	"github.com/GoPlayAndFun/LocKey/internal/routing"
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
+	"github.com/SystemBuilders/LocKey/internal/routing"
 	"github.com/gorilla/mux"
 )
 

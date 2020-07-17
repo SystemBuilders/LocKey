@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
 var _ Config = (*SimpleConfig)(nil)

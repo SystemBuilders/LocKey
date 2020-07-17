@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/GoPlayAndFun/LocKey/internal/lockservice"
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
 // type Request = lockservice.Request

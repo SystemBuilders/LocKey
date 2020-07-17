@@ -1,5 +1,3 @@
-github.com/GoPlayAndFun/Lockey v0.0.0-20200628171715-3c1478c4f4c0 h1:xqGntGNkFLNsusyVdKgjYXbG1vFInc8Uj+eHKPtjMtI=
-github.com/GoPlayAndFun/Lockey v0.0.0-20200628171715-3c1478c4f4c0/go.mod h1:uRyJjpqRpApBTJVWr6+leVYUrGYijf6KtDJlzNHqsXU=
 github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/gorilla/mux v1.7.4 h1:VuZ8uybHlWmqV03+zRzdwKL4tUnIp1MAQtp1mIFE1bc=
 github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
