@@ -55,17 +55,15 @@ func Test_LRUCache(t *testing.T) {
 	}
 	lruCache.PrintCache()
 
-	// err = lruCache.GetElement(three)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// lruCache.PrintCache()
+	err = lruCache.GetElement(three)
+	if err != nil {
+		fmt.Println(err)
+	}
+	lruCache.PrintCache()
 
-	// err = lruCache.GetElement(four)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// lruCache.PrintCache()
+	err = lruCache.GetElement(four)
+	if err != nil {
+		fmt.Println(err)
+	}
+	lruCache.PrintCache()
 }
-
-// DLL doesnt have tail to head link - document it.

@@ -141,29 +141,15 @@ func (dll *DoublyLinkedList) DeleteNode(node Node) {
 	if node == nil {
 		log.Println("Node is nil, can't be deleted")
 	}
-	// dll.PrintLinkedList()
+
 	leftNode := node.Left()
 	rightNode := node.Right()
 
 	if node == dll.Head {
 		dll.Head = rightNode
 	}
-	// fmt.Println("X")
-	// fmt.Println(dll.Head.Key())
-	// fmt.Println("X")
-	// if leftNode != nil { //&& leftNode.Right() != nil {
-	// 	fmt.Println(leftNode.Key())
-	// 	fmt.Println("Y")
-	// 	fmt.Println(node.Key())
-	// 	// fmt.Println(leftNode.Right().Key())
-	// }
-	// fmt.Println("X")
-	// fmt.Println(rightNode)
-	// fmt.Println("X")
+
 	if leftNode != nil {
-		if leftNode.Right() != nil {
-			fmt.Println(leftNode.Right().Key())
-		}
 		leftNode.(*DLLNode).RightNode = rightNode
 		if rightNode != nil {
 			rightNode.(*DLLNode).LeftNode = leftNode
@@ -173,29 +159,17 @@ func (dll *DoublyLinkedList) DeleteNode(node Node) {
 			rightNode.(*DLLNode).LeftNode = nil
 		}
 	}
-	// dll.PrintLinkedList()
 }
 
 // PrintLinkedList prints the given linked list from head to tail order.
 func (dll *DoublyLinkedList) PrintLinkedList() {
 	head := dll.Head
-	var tail *DLLNode
 	for {
 		if head == nil {
 			break
 		}
 		fmt.Printf("%d-> ", head.Key())
-		tail = head.(*DLLNode)
 		head = head.(*DLLNode).RightNode
 	}
 	fmt.Println("NULL")
-
-	for {
-		if tail == dll.Head {
-			break
-		}
-		fmt.Printf("%d-> ", tail.Key())
-		tail = tail.LeftNode.(*DLLNode)
-	}
-	fmt.Printf("%d-> NULL\n\n\n", tail.Key())
 }

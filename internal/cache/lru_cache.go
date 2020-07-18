@@ -18,10 +18,8 @@ var _ Cache = (*LRUCache)(nil)
 // * Maintaining a logical order in the DLL - first element is MRU.
 // * At every insertion, the MRU is maintained at the Head of the DLL.
 // * After every access, the element is moved to the MRU position in the DLL.
-// * All insertions happen at the "start" pointer for ease and this
-//   is repositioned after every access to the appropriate next position.
-// * The "start" pointer ALWAYS points to the LRU element and
-//   order of the DLL is decreasing frequency of the elements.
+// * All insertions occur at the head of the DLL since this is the
+//   MRU position. This ensures that the LRU position is the tail.
 //
 // The hash map maintains the existance of the element in the cache
 // and the DLL is to maintain the frequency of the usage of the element.
@@ -49,8 +47,9 @@ func NewLRUCache(capacity int) *LRUCache {
 //
 // Whenever an element is retrieved from the cache,
 // it's bumped to the MRU position in the DLL.
-// The "start" pointer is always positioned to the
-// "next addition ready" position.
+//
+// The element is rmeoved from the map too because
+// it might have stale node values.
 func (lru *LRUCache) GetElement(element interface{}) error {
 	// Check whether the element exists in the cache.
 	if _, ok := lru.m[element]; ok {
@@ -59,24 +58,33 @@ func (lru *LRUCache) GetElement(element interface{}) error {
 		// most recently used element in the cache. If it's not,
 		// it must be moved to the MRU to accomodate the protocol.
 		if lru.dll.Head.Key() != element && lru.tail != lru.dll.Head {
-			fmt.Println(nodeOfKey.Key())
+			// update the tail node.
 			if lru.tail.Key() == element {
 				lru.tail = lru.tail.LeftNode.(*DLLNode)
 			}
+
 			leftNode := nodeOfKey.LeftNode
 			rightNode := nodeOfKey.RightNode
+
+			// delete the old key so that it can be moved to MRU.
 			lru.dll.DeleteNode(nodeOfKey)
+			lru.deleteElementFromMap(nodeOfKey.Key())
+
+			// value of leftNode and rightNode are updated in
+			// map because they have undergone a deletion around them.
 			if leftNode != nil {
 				lru.insertElementIntoMap(leftNode.Key(), leftNode)
 			}
 			if rightNode != nil {
 				lru.insertElementIntoMap(rightNode.Key(), rightNode)
 			}
+
 			// Move the currently accessed node to the MRU position.
 			// The start pointer doesn't change as it still points to
 			// the LRU element.
 			lru.dll.InsertNodeToLeft(lru.dll.Head, nodeOfKey.NodeKey)
 			lru.insertElementIntoMap(element, lru.dll.Head)
+
 			headRight := lru.dll.Head.Right()
 			if headRight != nil {
 				lru.insertElementIntoMap(headRight.Key(), headRight)
@@ -88,6 +96,10 @@ func (lru *LRUCache) GetElement(element interface{}) error {
 }
 
 // PutElement inserts an element in the cache.
+// All insertions occur at the head node of the DLL.
+//
+// Removal of the LRU is done my deleting the tail node,
+// making place for a new node.
 func (lru *LRUCache) PutElement(element interface{}) error {
 	if !lru.full {
 		if lru.dll.Head == nil {
@@ -117,9 +129,10 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 
 		tailNode := lru.tail
 		lru.tail = lru.tail.LeftNode.(*DLLNode)
+
 		// Delete the "start" node and make the newly inserted node the MRU node.
 		lru.dll.DeleteNode(tailNode)
-		delete(lru.m, tailNode.Key())
+		lru.deleteElementFromMap(tailNode.Key())
 	}
 	return nil
 }
@@ -147,9 +160,9 @@ func (lru *LRUCache) PrintCache() {
 	fmt.Printf("\nDLL:\n")
 	lru.dll.PrintLinkedList()
 	if lru.tail != nil {
-		fmt.Printf("\n\nTail: %d\nFull? : %t\n", lru.tail.Key(), lru.full)
+		fmt.Printf("\n\nHead: %d\nTail: %d\nFull? : %t\n", lru.dll.Head.Key(), lru.tail.Key(), lru.full)
 	} else {
-		fmt.Printf("\n\nTail: %d\nFull? : %t\n", -1, lru.full)
+		fmt.Printf("\n\nHead: %d\nTail: %d\nFull? : %t\n", lru.dll.Head.Key(), -1, lru.full)
 	}
 	fmt.Printf("\n\n-------------------------------------\n\n")
 }
@@ -163,6 +176,14 @@ func (lru *LRUCache) insertElementIntoMap(key interface{}, node Node) error {
 	return nil
 }
 
+func (lru *LRUCache) deleteElementFromMap(key interface{}) error {
+	if _, ok := lru.m[key]; ok {
+		delete(lru.m, key)
+	} else {
+		return ErrElementDoesntExist
+	}
+	return nil
+}
 func (lru *LRUCache) printMap() {
 	for k, v := range lru.m {
 		fmt.Printf("Key: %v, Value: ", k)
