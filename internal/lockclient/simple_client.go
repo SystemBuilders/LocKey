@@ -10,27 +10,11 @@ import (
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
-var _ Config = (*SimpleConfig)(nil)
-
-// SimpleConfig implements Config.
-type SimpleConfig struct {
-	IPAddr   string
-	PortAddr string
-}
+var _ Config = (*lockservice.SimpleConfig)(nil)
 
 // SimpleClient implements Client, the lockclient for LocKey.
 type SimpleClient struct {
-	config SimpleConfig
-}
-
-// IP returns the IP from SimpleConfig.
-func (scfg *SimpleConfig) IP() string {
-	return scfg.IPAddr
-}
-
-// Port returns the port from SimpleConfig.
-func (scfg *SimpleConfig) Port() string {
-	return scfg.PortAddr
+	config lockservice.SimpleConfig
 }
 
 var _ Client = (*SimpleClient)(nil)
@@ -38,7 +22,7 @@ var _ Client = (*SimpleClient)(nil)
 // Acquire makes a HTTP call to the lockserver and acquires the lock.
 // The errors invloved may be due the HTTP errors or the lockservice errors.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
-	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/acquire"
+	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 
 	testData := lockservice.LockRequest{FileID: d.ID()}
 	requestJson, err := json.Marshal(testData)
