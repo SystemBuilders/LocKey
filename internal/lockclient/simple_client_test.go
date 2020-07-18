@@ -15,7 +15,7 @@ func TestAcquireandRelease(t *testing.T) {
 	zerolog.New(os.Stdout).With()
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
-	scfg := lockservice.NewSimpleConfig("127.0.0.1", "1234")
+	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
 	ls := lockservice.NewSimpleLockService(log)
 
 	quit := make(chan bool, 1)
@@ -33,7 +33,7 @@ func TestAcquireandRelease(t *testing.T) {
 	// Server takes some time to start
 	time.Sleep(100 * time.Millisecond)
 	t.Run("acquire 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: SimpleConfig{IPAddr: "http://127.0.0.1", PortAddr: "1234"}}
+		sc := SimpleClient{config: *scfg}
 		d := lockservice.NewSimpleDescriptor("test")
 
 		got := sc.Acquire(d)
@@ -43,7 +43,7 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	})
 	t.Run("release 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: SimpleConfig{IPAddr: "http://127.0.0.1", PortAddr: "1234"}}
+		sc := SimpleClient{config: *scfg}
 		d := lockservice.NewSimpleDescriptor("test")
 
 		got := sc.Release(d)
