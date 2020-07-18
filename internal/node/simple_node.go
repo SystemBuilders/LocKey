@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 func Start(ls *lockservice.SimpleLockService, scfg lockservice.SimpleConfig) error {
 
 	IP := scfg.IP()
+	IP = strings.TrimPrefix(IP, "http://")
 	port := scfg.Port()
 
 	if err := checkValidPort(port); err != nil {
