@@ -8,6 +8,7 @@ func (e Error) Error() string { return string(e) }
 // Constant errors.
 // Rule of tthumb, all errors start with a small letter and end with no full stop.
 const (
-	ErrFileAcquired    = Error("file already acquired")
-	ErrCantReleaseFile = Error("file cannot be released, wasn't locked before")
+	ErrFileAcquired       = Error("file already acquired")
+	ErrCantReleaseFile    = Error("file cannot be released, wasn't locked before")
+	ErrUnauthorizedAccess = Error("file cannot be released, unauthorized access")
 )

@@ -34,7 +34,7 @@ func TestAcquireandRelease(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	t.Run("acquire 'test'", func(t *testing.T) {
 		sc := SimpleClient{config: *scfg}
-		d := lockservice.NewSimpleDescriptor("test")
+		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Acquire(d)
 		var want error
@@ -44,7 +44,7 @@ func TestAcquireandRelease(t *testing.T) {
 	})
 	t.Run("release 'test'", func(t *testing.T) {
 		sc := SimpleClient{config: *scfg}
-		d := lockservice.NewSimpleDescriptor("test")
+		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Release(d)
 		var want error

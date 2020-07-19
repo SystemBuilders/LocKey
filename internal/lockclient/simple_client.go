@@ -24,7 +24,7 @@ var _ Client = (*SimpleClient)(nil)
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 
-	testData := lockservice.LockRequest{FileID: d.ID()}
+	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
 
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
@@ -46,6 +46,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
 	}
+
 	return nil
 }
 
@@ -54,7 +55,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 
-	testData := lockservice.LockRequest{FileID: d.ID()}
+	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")

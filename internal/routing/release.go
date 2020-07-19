@@ -26,6 +26,7 @@ func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 
 	desc := &lockservice.SimpleDescriptor{
 		FileID: req.FileID,
+		UserID: req.UserID,
 	}
 	err = ls.Release(desc)
 
@@ -60,6 +61,7 @@ func checkReleased(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 
 	desc := &lockservice.SimpleDescriptor{
 		FileID: req.FileID,
+		UserID: req.UserID,
 	}
 
 	if ls.CheckReleased(desc) {
