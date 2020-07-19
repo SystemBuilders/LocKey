@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
@@ -15,6 +17,7 @@ var _ Config = (*lockservice.SimpleConfig)(nil)
 // SimpleClient implements Client, the lockclient for LocKey.
 type SimpleClient struct {
 	config lockservice.SimpleConfig
+	cache  cache.LRUCache
 }
 
 var _ Client = (*SimpleClient)(nil)
@@ -23,6 +26,13 @@ var _ Client = (*SimpleClient)(nil)
 // The errors invloved may be due the HTTP errors or the lockservice errors.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
+
+	isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
+
+	if isInCache == nil {
+		fmt.Printf("%q is already locked\n", d.ID())
+		return ErrElementAlreadyLocked
+	}
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
@@ -45,6 +55,10 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
+	}
+	err = sc.cache.PutElement(cache.NewSimpleKey(d.ID()))
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -72,6 +86,10 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
+	}
+	err = sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
+	if err != nil {
+		return err
 	}
 
 	return nil

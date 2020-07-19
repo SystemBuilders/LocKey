@@ -10,16 +10,16 @@ var _ Key = (*SimpleKey)(nil)
 
 // SimpleKey implements a Key interface.
 type SimpleKey struct {
-	Value int
+	Value string
 }
 
 // Data returns the value of the key.
-func (sk *SimpleKey) Data() int {
+func (sk *SimpleKey) Data() string {
 	return sk.Value
 }
 
 // NewSimpleKey returns a new SimpleKey of the given value.
-func NewSimpleKey(val int) *SimpleKey {
+func NewSimpleKey(val string) *SimpleKey {
 	return &SimpleKey{
 		Value: val,
 	}
@@ -73,7 +73,7 @@ func (dll *DoublyLinkedList) CreateNode() Node {
 		LeftNode:  nil,
 		RightNode: nil,
 		NodeKey: &SimpleKey{
-			Value: -1,
+			Value: "",
 		},
 	}
 }

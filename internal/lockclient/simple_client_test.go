@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/SystemBuilders/LocKey/internal/node"
 
@@ -32,25 +33,47 @@ func TestAcquireandRelease(t *testing.T) {
 
 	// Server takes some time to start
 	time.Sleep(100 * time.Millisecond)
-	t.Run("acquire 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: *scfg}
+	t.Run("acquire 'test' release 'test'", func(t *testing.T) {
+		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
 		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Acquire(d)
 		var want error
 		if got != want {
-			t.Errorf("got %q want %q", got, want)
+			t.Errorf("acquire: got %q want %q", got, want)
 		}
-	})
-	t.Run("release 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: *scfg}
-		d := lockservice.NewSimpleDescriptor("test", "owner")
 
-		got := sc.Release(d)
-		var want error
+		d = lockservice.NewSimpleDescriptor("test", "owner")
+
+		got = sc.Release(d)
 
 		if got != want {
-			t.Errorf("got %q want %q", got, want)
+			t.Errorf("release: got %q want %q", got, want)
+		}
+	})
+
+	t.Run("acquire 'test', acquire 'test', release 'test'", func(t *testing.T) {
+		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
+		d := lockservice.NewSimpleDescriptor("test", "owner")
+
+		got := sc.Acquire(d)
+		var want error
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		got = sc.Acquire(d)
+		want = ErrElementAlreadyLocked
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		d = lockservice.NewSimpleDescriptor("test", "owner")
+
+		got = sc.Release(d)
+		want = nil
+		if got != want {
+			t.Errorf("release: got %q want %q", got, want)
 		}
 	})
 	quit <- true
