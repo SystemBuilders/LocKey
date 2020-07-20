@@ -27,12 +27,12 @@ var _ Client = (*SimpleClient)(nil)
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 
-	isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
+	// isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
 
-	if isInCache == nil {
-		fmt.Printf("%q is already locked\n", d.ID())
-		return ErrElementAlreadyLocked
-	}
+	// if isInCache == nil {
+	// 	fmt.Printf("%q is already locked\n", d.ID())
+	// 	return ErrElementAlreadyLocked
+	// }
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
@@ -56,6 +56,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
 	}
+	fmt.Println("made POST call")
 	err = sc.cache.PutElement(cache.NewSimpleKey(d.ID()))
 	if err != nil {
 		return err

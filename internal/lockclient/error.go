@@ -8,5 +8,5 @@ func (e Error) Error() string { return string(e) }
 // Constant errors.
 // Rule of thumb, all errors start with a small letter and end with no full stop.
 const (
-	ErrElementAlreadyLocked = Error("element is already locked and cannot be acquired")
+	ErrFileAcquired = Error("file already acquired")
 )
