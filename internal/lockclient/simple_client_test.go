@@ -33,8 +33,11 @@ func TestAcquireandRelease(t *testing.T) {
 
 	// Server takes some time to start
 	time.Sleep(100 * time.Millisecond)
-	t.Run("acquire 'test' release 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
+	t.Run("acquire test release test", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(*scfg, *cache)
+
 		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Acquire(d)
@@ -67,8 +70,11 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	})
 
-	t.Run("acquire 'test', acquire 'test', release 'test'", func(t *testing.T) {
-		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
+	t.Run("acquire test, acquire test, release test", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(*scfg, *cache)
+
 		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Acquire(d)
@@ -92,8 +98,11 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	})
 
-	t.Run("acquire 'test', trying to release 'test' as another entity should fail", func(t *testing.T) {
-		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(1)}
+	t.Run("acquire test, trying to release test as another entity should fail", func(t *testing.T) {
+		size := 1
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(*scfg, *cache)
+
 		d := lockservice.NewSimpleDescriptor("test", "owner1")
 		got := sc.Acquire(d)
 		var want error
@@ -106,6 +115,13 @@ func TestAcquireandRelease(t *testing.T) {
 		want = lockservice.ErrUnauthorizedAccess
 		if got != want {
 			t.Errorf("acquire: got %v want %v", got, want)
+		}
+
+		d = lockservice.NewSimpleDescriptor("test2", "owner1")
+		got = sc.Acquire(d)
+		want = nil
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
 		d = lockservice.NewSimpleDescriptor("test", "owner1")

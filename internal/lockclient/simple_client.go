@@ -20,6 +20,14 @@ type SimpleClient struct {
 	cache  cache.LRUCache
 }
 
+// NewSimpleKey returns a new SimpleKey of the given value.
+func NewSimpleClient(config lockservice.SimpleConfig, cache cache.LRUCache) *SimpleClient {
+	return &SimpleClient{
+		config: config,
+		cache:  cache,
+	}
+}
+
 var _ Client = (*SimpleClient)(nil)
 
 // Acquire makes a HTTP call to the lockserver and acquires the lock.
@@ -86,11 +94,7 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	if resp.StatusCode != 200 {
 		return lockservice.Error(strings.TrimSpace(string(body)))
 	}
-	err = sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
-	if err != nil {
-		return err
-	}
-
+	sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
 	return nil
 }
 
