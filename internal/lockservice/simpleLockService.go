@@ -124,7 +124,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			Msg("released")
 		ls.lockMap.Mutex.Unlock()
 		return nil
-	} else if ls.lockMap.LockMap[sd.ID()] == "" {
+	} else if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
 		ls.
 			log.
 			Debug().
