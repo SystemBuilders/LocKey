@@ -1,9 +1,7 @@
 package lockclient
 
 import (
-	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -45,7 +43,22 @@ func TestAcquireandRelease(t *testing.T) {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
+		d = lockservice.NewSimpleDescriptor("test1", "owner")
+
+		got = sc.Acquire(d)
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
+
 		d = lockservice.NewSimpleDescriptor("test", "owner")
+
+		got = sc.Release(d)
+
+		if got != want {
+			t.Errorf("release: got %q want %q", got, want)
+		}
+
+		d = lockservice.NewSimpleDescriptor("test1", "owner")
 
 		got = sc.Release(d)
 
@@ -54,30 +67,30 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	})
 
-	// t.Run("acquire 'test', acquire 'test', release 'test'", func(t *testing.T) {
-	// 	sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
-	// 	d := lockservice.NewSimpleDescriptor("test", "owner")
+	t.Run("acquire 'test', acquire 'test', release 'test'", func(t *testing.T) {
+		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(5)}
+		d := lockservice.NewSimpleDescriptor("test", "owner")
 
-	// 	got := sc.Acquire(d)
-	// 	var want error
-	// 	if got != want {
-	// 		t.Errorf("acquire: got %q want %q", got, want)
-	// 	}
+		got := sc.Acquire(d)
+		var want error
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
 
-	// 	got = sc.Acquire(d)
-	// 	want = ErrFileAcquired
-	// 	if got.Error() != want.Error() {
-	// 		t.Errorf("acquire: got %q want %q", got, want)
-	// 	}
+		got = sc.Acquire(d)
+		want = lockservice.ErrFileAcquired
+		if got.Error() != want.Error() {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
 
-	// 	d = lockservice.NewSimpleDescriptor("test", "owner")
+		d = lockservice.NewSimpleDescriptor("test", "owner")
 
-	// 	got = sc.Release(d)
-	// 	want = nil
-	// 	if got != want {
-	// 		t.Errorf("release: got %q want %q", got, want)
-	// 	}
-	// })
+		got = sc.Release(d)
+		want = nil
+		if got != want {
+			t.Errorf("release: got %q want %q", got, want)
+		}
+	})
 
 	t.Run("acquire 'test', trying to release 'test' as another entity should fail", func(t *testing.T) {
 		sc := SimpleClient{config: *scfg, cache: *cache.NewLRUCache(1)}
@@ -91,7 +104,6 @@ func TestAcquireandRelease(t *testing.T) {
 		d = lockservice.NewSimpleDescriptor("test", "owner2")
 		got = sc.Release(d)
 		want = lockservice.ErrUnauthorizedAccess
-		fmt.Println(reflect.TypeOf(got), reflect.TypeOf(want))
 		if got != want {
 			t.Errorf("acquire: got %v want %v", got, want)
 		}

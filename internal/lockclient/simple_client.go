@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
@@ -27,12 +27,11 @@ var _ Client = (*SimpleClient)(nil)
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 
-	// isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
+	isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
 
-	// if isInCache == nil {
-	// 	fmt.Printf("%q is already locked\n", d.ID())
-	// 	return ErrElementAlreadyLocked
-	// }
+	if isInCache == nil {
+		return lockservice.ErrFileAcquired
+	}
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
@@ -54,9 +53,8 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return errors.New(string(body))
+		return errors.New(strings.TrimSpace(string(body)))
 	}
-	fmt.Println("made POST call")
 	err = sc.cache.PutElement(cache.NewSimpleKey(d.ID()))
 	if err != nil {
 		return err
@@ -86,7 +84,7 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return errors.New(string(body))
+		return lockservice.Error(strings.TrimSpace(string(body)))
 	}
 	err = sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
 	if err != nil {

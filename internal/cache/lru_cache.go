@@ -125,7 +125,7 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 	return nil
 }
 
-// RemoveElement() deleted a node from the cache based on a key value
+// RemoveElement() deletes a node from the cache based on a key value
 // If there are multiple nodes with the same value, the node that was
 // most recently used will be removed.
 func (lru *LRUCache) RemoveElement(element interface{}) error {

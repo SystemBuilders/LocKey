@@ -91,7 +91,7 @@ func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
 // Acquire function lets a client acquire a lock on an object.
 func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
-	if ls.lockMap.LockMap[sd.ID()] != "" {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
@@ -149,7 +149,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 // CheckAcquired returns true if the file is acquired
 func (ls *SimpleLockService) CheckAcquired(sd Descriptors) bool {
 	ls.lockMap.Mutex.Lock()
-	if ls.lockMap.LockMap[sd.ID()] != "" {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
@@ -170,7 +170,7 @@ func (ls *SimpleLockService) CheckAcquired(sd Descriptors) bool {
 // CheckReleased returns true if the file is released
 func (ls *SimpleLockService) CheckReleased(sd Descriptors) bool {
 	ls.lockMap.Mutex.Lock()
-	if ls.lockMap.LockMap[sd.ID()] != "" {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.

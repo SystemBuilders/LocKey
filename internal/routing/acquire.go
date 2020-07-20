@@ -2,7 +2,6 @@ package routing
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -33,7 +32,6 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 	}
 	err = ls.Acquire(desc)
 
-	fmt.Printf("%v", err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
