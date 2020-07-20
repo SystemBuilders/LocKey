@@ -28,6 +28,7 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 
 	desc := &lockservice.SimpleDescriptor{
 		FileID: req.FileID,
+		UserID: req.UserID,
 	}
 	err = ls.Acquire(desc)
 
@@ -57,6 +58,7 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 
 	desc := &lockservice.SimpleDescriptor{
 		FileID: req.FileID,
+		UserID: req.UserID,
 	}
 	if ls.CheckAcquired(desc) {
 		w.Write([]byte("checkAcquire success"))

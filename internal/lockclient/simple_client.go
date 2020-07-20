@@ -6,7 +6,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
+	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
@@ -15,6 +17,15 @@ var _ Config = (*lockservice.SimpleConfig)(nil)
 // SimpleClient implements Client, the lockclient for LocKey.
 type SimpleClient struct {
 	config lockservice.SimpleConfig
+	cache  cache.LRUCache
+}
+
+// NewSimpleKey returns a new SimpleKey of the given value.
+func NewSimpleClient(config lockservice.SimpleConfig, cache cache.LRUCache) *SimpleClient {
+	return &SimpleClient{
+		config: config,
+		cache:  cache,
+	}
 }
 
 var _ Client = (*SimpleClient)(nil)
@@ -24,7 +35,13 @@ var _ Client = (*SimpleClient)(nil)
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 
-	testData := lockservice.LockRequest{FileID: d.ID()}
+	isInCache := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
+
+	if isInCache == nil {
+		return lockservice.ErrFileAcquired
+	}
+
+	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
 
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
@@ -44,8 +61,13 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return errors.New(string(body))
+		return errors.New(strings.TrimSpace(string(body)))
 	}
+	err = sc.cache.PutElement(cache.NewSimpleKey(d.ID()))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -54,7 +76,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 
-	testData := lockservice.LockRequest{FileID: d.ID()}
+	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJson, err := json.Marshal(testData)
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")
@@ -70,9 +92,9 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return errors.New(string(body))
+		return lockservice.Error(strings.TrimSpace(string(body)))
 	}
-
+	sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
 	return nil
 }
 

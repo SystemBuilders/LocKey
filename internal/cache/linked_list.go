@@ -2,7 +2,7 @@ package cache
 
 // Key descrbes a single key in the Linked List.
 type Key interface {
-	Data() int
+	Data() string
 }
 
 // Node describes a single node in the Linked List.

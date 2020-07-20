@@ -23,4 +23,5 @@ type LockService interface {
 // Descriptors describe the type of data that a lock acquiring component must describe.
 type Descriptors interface {
 	ID() string
+	Owner() string
 }
