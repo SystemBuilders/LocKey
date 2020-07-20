@@ -19,6 +19,17 @@ type Client interface {
 	// implementation interacts with the underlying server and
 	// provides the service.
 	Release(lockservice.Descriptors) error
+	// Watch can be used to watch the state of lock on a descriptor
+	// continously. When the state of the lock changes, the "watcher"
+	// will be notified about the change.
+	Watch(lockservice.Descriptors) error
+	// Pounce can be used to "pounce" on a lock that has already been
+	// acquired. This is similar to acquire but once a process has
+	// opted to pounce, they will be provided first access by having
+	// a queue of pouncers.
+	Pounce(lockservice.Descriptors) error
+	// Pouncers returns the current pouncers on any particular lock.
+	Pouncers(lockservice.Descriptors) []string
 }
 
 // Config describes the configuration for the lockservice to run on.
