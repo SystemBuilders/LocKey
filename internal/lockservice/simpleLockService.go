@@ -18,11 +18,13 @@ type SimpleConfig struct {
 	PortAddr string
 }
 
+// LockRequest is an instance of a request for a lock.
 type LockRequest struct {
 	FileID string `json:"FileID"`
 	UserID string `json:"UserID"`
 }
 
+// IP returns the IP from the SimpleConfig.
 func (scfg *SimpleConfig) IP() string {
 	return scfg.IPAddr
 }
@@ -63,6 +65,7 @@ func (sd *SimpleDescriptor) Owner() string {
 	return sd.UserID
 }
 
+// NewSimpleConfig returns an instance of the SimpleConfig.
 func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	return &SimpleConfig{
 		IPAddr:   IPAddr,
@@ -70,6 +73,7 @@ func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	}
 }
 
+// NewSimpleDescriptor returns an instance of the SimpleDescriptor.
 func NewSimpleDescriptor(FileID, UserID string) *SimpleDescriptor {
 	return &SimpleDescriptor{
 		FileID: FileID,
@@ -146,17 +150,18 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 
 }
 
-// CheckAcquired returns true if the file is acquired
-func (ls *SimpleLockService) CheckAcquired(sd Descriptors) bool {
+// CheckAcquired returns true if the file is acquired.
+// It also returns the owner of the file.
+func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 	ls.lockMap.Mutex.Lock()
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
+	if owner, ok := ls.lockMap.LockMap[sd.ID()]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
 			Str("descriptor", sd.ID()).
 			Msg("checkAcquire success")
-		return true
+		return owner, true
 	}
 	ls.
 		log.
@@ -164,7 +169,7 @@ func (ls *SimpleLockService) CheckAcquired(sd Descriptors) bool {
 		Str("descriptor", sd.ID()).
 		Msg("check Acquire failure")
 	ls.lockMap.Mutex.Unlock()
-	return false
+	return "", false
 }
 
 // CheckReleased returns true if the file is released

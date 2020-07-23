@@ -60,7 +60,8 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		FileID: req.FileID,
 		UserID: req.UserID,
 	}
-	if ls.CheckAcquired(desc) {
+	_, ok := ls.CheckAcquired(desc)
+	if ok {
 		w.Write([]byte("checkAcquire success"))
 		return
 	}

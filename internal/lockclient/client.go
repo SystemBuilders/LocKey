@@ -22,7 +22,9 @@ type Client interface {
 	// Watch can be used to watch the state of lock on a descriptor
 	// continously. When the state of the lock changes, the "watcher"
 	// will be notified about the change.
-	Watch(lockservice.Descriptors) error
+	// The channel passed as the argument can be used to stop watching
+	// at any point of time.
+	Watch(lockservice.Descriptors, chan struct{}) (chan Lock, error)
 	// Pounce can be used to "pounce" on a lock that has already been
 	// acquired. This is similar to acquire but once a process has
 	// opted to pounce, they will be provided first access by having
@@ -38,4 +40,19 @@ type Config interface {
 	IP() string
 	// Port provides the port where the server is supposed to run.
 	Port() string
+}
+
+// State describes the state of a lock.
+type State int
+
+// These are the states of a lock.
+const (
+	Acquire State = iota
+	Release
+)
+
+// Lock includes the state of the lock and the owner.
+type Lock struct {
+	Owner     string
+	LockState State
 }

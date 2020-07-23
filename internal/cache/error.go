@@ -10,4 +10,5 @@ func (e Error) Error() string { return string(e) }
 const (
 	ErrElementDoesntExist   = Error("element doesn't exist in the cache")
 	ErrElementAlreadyExists = Error("element already exists in the cache")
+	ErrCacheDoesntExist     = Error("cache doesn't exist")
 )

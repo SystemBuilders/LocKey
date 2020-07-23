@@ -14,7 +14,8 @@ type LockService interface {
 	Release(Descriptors) error
 	// CheckAcquire checks whether a lock has been acquired on the given descriptor.
 	// The function returns true if the lock has been acquired on the component.
-	CheckAcquired(Descriptors) bool
+	// It also returns the owner of the lock on query.
+	CheckAcquired(Descriptors) (string, bool)
 	// CheckRelease checks whether a lock has been released (or not acquired) on the
 	// given component. Returns true if there are no locks on the descriptor.
 	CheckReleased(Descriptors) bool
