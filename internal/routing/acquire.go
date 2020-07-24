@@ -8,8 +8,6 @@ import (
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
-// type Request = lockservice.Request
-
 func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -48,7 +46,7 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
-	var req lockservice.LockRequest
+	var req lockservice.LockCheckRequest
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -58,12 +56,17 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 
 	desc := &lockservice.SimpleDescriptor{
 		FileID: req.FileID,
-		UserID: req.UserID,
 	}
-	_, ok := ls.CheckAcquired(desc)
+
+	owner, ok := ls.CheckAcquired(desc)
 	if ok {
-		w.Write([]byte("checkAcquire success"))
+		byteData, err := json.Marshal(lockservice.CheckAcquireRes{Owner: owner})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Write(byteData)
 		return
 	}
-	w.Write([]byte("checkAcquire failure"))
+	http.Error(w, lockservice.ErrCheckAcquireFailure.Error(), http.StatusInternalServerError)
 }

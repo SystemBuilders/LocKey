@@ -1,6 +1,7 @@
 package lockclient
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/SystemBuilders/LocKey/internal/node"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/rs/zerolog"
 )
@@ -128,17 +130,59 @@ func TestLockService(t *testing.T) {
 		}
 
 		d = lockservice.NewSimpleDescriptor("test", "owner1")
-
 		got = sc.Release(d)
 		want = nil
-
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
 	})
 
-	t.Run("lock watching", func(t *testing.T) {
+	t.Run("lock watching without cache", func(t *testing.T) {
+		// t.SkipNow()
+		sc := NewSimpleClient(scfg, nil)
 
+		assert := assert.New(t)
+		d := lockservice.NewSimpleDescriptor("test", "owner1")
+		// acquire the lock
+		err := sc.Acquire(d)
+		assert.Nil(err)
+
+		// start watching the lock.
+		quit := make(chan struct{}, 1)
+		stateChan, err := sc.Watch(d, quit)
+		assert.Nil(err)
+
+		states := []Lock{}
+		go func() {
+			for {
+				state := <-stateChan
+				states = append(states, state)
+			}
+		}()
+
+		err = sc.Release(d)
+		assert.Nil(err)
+
+		d1 := lockservice.NewSimpleDescriptor("test", "owner2")
+		err = sc.Acquire(d1)
+		assert.Nil(err)
+
+		err = sc.Release(d1)
+		assert.Nil(err)
+
+		d2 := lockservice.NewSimpleDescriptor("test", "owner3")
+		err = sc.Acquire(d2)
+		assert.Nil(err)
+
+		err = sc.Release(d2)
+		assert.Nil(err)
+
+		quit <- struct{}{}
+
+		// wait to stop watching gracefully.
+		<-time.After(10 * time.Millisecond)
+
+		fmt.Println(states)
 	})
 	quit <- true
 	return
