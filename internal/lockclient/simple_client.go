@@ -75,7 +75,6 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -102,7 +101,10 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
 	if resp.StatusCode != 200 {
 		return lockservice.Error(strings.TrimSpace(string(body)))
 	}
@@ -171,9 +173,13 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 	if err != nil {
 		return nil, err
 	}
-
 	stateChan <- Lock{owner, Acquire}
-	log.Debug().Str("process", "lock watching").Str("lock", d.ID()).Str("owner", owner).Msg("lock is in acquired state")
+	log.Debug().
+		Str("process", "lock watching").
+		Str("lock", d.ID()).
+		Str("owner", owner).
+		Msg("lock is in acquired state")
+
 	go func() {
 		for {
 			select {
@@ -185,7 +191,10 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 				if err != nil {
 					if err == lockservice.ErrCheckAcquireFailure {
 						stateChan <- Lock{"", Release}
-						log.Debug().Str("process", "lock watching").Str("lock", d.ID()).Msg("lock is in released state")
+						log.Debug().
+							Str("process", "lock watching").
+							Str("lock", d.ID()).
+							Msg("lock is in released state")
 					} else {
 						return
 					}
@@ -194,13 +203,16 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 					if newOwner != owner {
 						owner = newOwner
 						stateChan <- Lock{owner, Acquire}
-						log.Debug().Str("process", "lock watching").Str("lock", d.ID()).Str("owner", owner).Msg("lock is in acquired state")
+						log.Debug().
+							Str("process", "lock watching").
+							Str("lock", d.ID()).
+							Str("owner", owner).
+							Msg("lock is in acquired state")
 					}
 				}
 			}
 		}
 	}()
-
 	return stateChan, nil
 }
 

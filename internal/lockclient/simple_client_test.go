@@ -1,7 +1,6 @@
 package lockclient
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -36,7 +35,6 @@ func TestLockService(t *testing.T) {
 	// Server takes some time to start
 	time.Sleep(100 * time.Millisecond)
 	t.Run("acquire test release test", func(t *testing.T) {
-		t.SkipNow()
 		size := 5
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
@@ -74,7 +72,6 @@ func TestLockService(t *testing.T) {
 	})
 
 	t.Run("acquire test, acquire test, release test", func(t *testing.T) {
-		t.SkipNow()
 		size := 5
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
@@ -103,8 +100,7 @@ func TestLockService(t *testing.T) {
 	})
 
 	t.Run("acquire test, trying to release test as another entity should fail", func(t *testing.T) {
-		t.SkipNow()
-		size := 1
+		size := 2
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
 
@@ -138,7 +134,6 @@ func TestLockService(t *testing.T) {
 	})
 
 	t.Run("lock watching without cache", func(t *testing.T) {
-		// t.SkipNow()
 		sc := NewSimpleClient(scfg, nil)
 
 		assert := assert.New(t)
@@ -181,8 +176,6 @@ func TestLockService(t *testing.T) {
 
 		// wait to stop watching gracefully.
 		<-time.After(10 * time.Millisecond)
-
-		fmt.Println(states)
 	})
 	quit <- true
 	return
