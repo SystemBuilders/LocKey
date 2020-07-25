@@ -180,3 +180,79 @@ func TestLockService(t *testing.T) {
 	quit <- true
 	return
 }
+
+// BenchmarkLocKeyWithoutCache stats:     2130	  28828088 ns/op	   15952 B/op	   190 allocs/op
+func BenchmarkLocKeyWithoutCache(b *testing.B) {
+	zerolog.New(os.Stdout).With()
+
+	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
+	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
+	ls := lockservice.NewSimpleLockService(log)
+
+	quit := make(chan bool, 1)
+	go func() {
+		node.Start(ls, *scfg)
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+		}
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	sc := NewSimpleClient(scfg, nil)
+	d := lockservice.NewSimpleDescriptor("test", "owner")
+	for n := 0; n < b.N; n++ {
+		got := sc.Acquire(d)
+		var want error
+		if got != want {
+			b.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		got = sc.Release(d)
+		if got != want {
+			b.Errorf("release: got %q want %q", got, want)
+		}
+	}
+}
+
+// BenchmarkLocKeyWithCache stats: 3669	  28702266 ns/op 16048 B/op   194 allocs/op
+func BenchmarkLocKeyWithCache(b *testing.B) {
+	zerolog.New(os.Stdout).With()
+
+	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
+	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
+	ls := lockservice.NewSimpleLockService(log)
+
+	quit := make(chan bool, 1)
+	go func() {
+		node.Start(ls, *scfg)
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+		}
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	size := 5
+	cache := cache.NewLRUCache(size)
+	sc := NewSimpleClient(scfg, cache)
+	d := lockservice.NewSimpleDescriptor("test", "owner")
+	for n := 0; n < b.N; n++ {
+		got := sc.Acquire(d)
+		var want error
+		if got != want {
+			b.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		got = sc.Release(d)
+		if got != want {
+			b.Errorf("release: got %q want %q", got, want)
+		}
+	}
+}

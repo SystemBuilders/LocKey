@@ -99,6 +99,7 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 				return err
 			}
 		}
+
 		lru.size++
 		if lru.size == lru.capacity {
 			lru.full = true
@@ -137,6 +138,7 @@ func (lru *LRUCache) RemoveElement(element interface{}) error {
 		} else if lru.tail == nodeOfKey {
 			lru.tail = nodeOfKey.LeftNode.(*DLLNode)
 		}
+		lru.size--
 		lru.dll.DeleteNode(nodeOfKey)
 		lru.deleteElementFromMap(*nodeOfKey.Key().(*SimpleKey))
 		return nil
