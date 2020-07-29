@@ -120,6 +120,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 		log.
 		Debug().
 		Str("descriptor", sd.ID()).
+		Str("owner", sd.Owner()).
 		Msg("locked")
 	return nil
 }
@@ -135,6 +136,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			log.
 			Debug().
 			Str("descriptor", sd.ID()).
+			Str("owner", sd.Owner()).
 			Msg("released")
 		ls.lockMap.Mutex.Unlock()
 		return nil

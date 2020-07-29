@@ -12,4 +12,5 @@ const (
 	ErrCantReleaseFile     = Error("file cannot be released, wasn't locked before")
 	ErrUnauthorizedAccess  = Error("file cannot be released, unauthorized access")
 	ErrCheckAcquireFailure = Error("file is not acquired")
+	ErrFileUnlocked        = Error("file doesn't have a lock")
 )

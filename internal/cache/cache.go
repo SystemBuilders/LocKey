@@ -6,7 +6,7 @@ type Cache interface {
 	// Getting the object makes it the most recently used object
 	// in the cache. This function must be implemented in O(1) complexity.
 	// If the object doesn't exist in the cache, an error is raised.
-	GetElement(element interface{}) error
+	GetElement(element interface{}) (string, error)
 	// PutElement inserts an object into the cache.
 	// Putting the object makes it the most recently used object
 	// in the cache. This function must be implemented in O(1) complexity.

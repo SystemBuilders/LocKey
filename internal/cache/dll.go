@@ -10,6 +10,7 @@ var _ Key = (*SimpleKey)(nil)
 
 // SimpleKey implements a Key interface.
 type SimpleKey struct {
+	Owner string
 	Value string
 }
 
@@ -19,9 +20,10 @@ func (sk *SimpleKey) Data() string {
 }
 
 // NewSimpleKey returns a new SimpleKey of the given value.
-func NewSimpleKey(val string) *SimpleKey {
+func NewSimpleKey(val, owner string) *SimpleKey {
 	return &SimpleKey{
 		Value: val,
+		Owner: owner,
 	}
 }
 

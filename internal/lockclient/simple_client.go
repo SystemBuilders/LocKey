@@ -35,16 +35,17 @@ var _ Client = (*SimpleClient)(nil)
 // Acquire makes an HTTP call to the lockserver and acquires the lock.
 // The errors involved may be due the HTTP errors or the lockservice errors.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
-	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 	// Check for existance of a cache and check
 	// if the element is in the cache.
 	if sc.cache != nil {
-		err := sc.getFromCache(d)
-		if err != nil {
+		_, err := sc.getFromCache(d)
+		// Since there can be network errors, we have this double check.
+		if err != nil && err != lockservice.ErrCheckAcquireFailure {
 			return err
 		}
 	}
 
+	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
 	// Since the cache doesn't have the element, query the server.
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJSON, err := json.Marshal(testData)
@@ -142,19 +143,35 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 // sent through it.
 func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (chan Lock, error) {
 	stateChan := make(chan Lock, 1)
-	owner, err := sc.watchLock(d)
+	// releaseNotification is true if the last notification wasn't a release.
+	releaseNotification := false
+	owner, err := sc.CheckAcquire(d)
 	if err != nil {
-		return nil, err
+		if err != lockservice.ErrCheckAcquireFailure {
+			return nil, err
+		}
+		// This means that the file is released
+		if releaseNotification {
+			releaseNotification = false
+			stateChan <- Lock{"", Release}
+			log.Debug().
+				Str("process", "lock watching").
+				Str("lock", d.ID()).
+				Msg("lock is in released state")
+		}
 	}
 	// Send the initial state of the lock and then
 	// keep sending state changes until stopped
 	// explicitly.
-	stateChan <- Lock{owner, Acquire}
-	log.Debug().
-		Str("process", "lock watching").
-		Str("lock", d.ID()).
-		Str("owner", owner).
-		Msg("lock is in acquired state")
+	if owner != "" {
+		releaseNotification = true
+		stateChan <- Lock{owner, Acquire}
+		log.Debug().
+			Str("process", "lock watching").
+			Str("lock", d.ID()).
+			Str("owner", owner).
+			Msg("lock is in acquired state")
+	}
 
 	go func() {
 		for {
@@ -163,20 +180,23 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 				log.Debug().Msg("stopped watching")
 				return
 			default:
-				newOwner, err := sc.watchLock(d)
+				newOwner, err := sc.CheckAcquire(d)
 				if err != nil {
-					if err == lockservice.ErrCheckAcquireFailure {
+					if err != lockservice.ErrCheckAcquireFailure {
+						return
+					}
+					if releaseNotification {
+						releaseNotification = false
 						stateChan <- Lock{"", Release}
 						log.Debug().
 							Str("process", "lock watching").
 							Str("lock", d.ID()).
 							Msg("lock is in released state")
-					} else {
-						return
 					}
 				} else {
 					// notify about the state only if there's a change.
 					if newOwner != owner {
+						releaseNotification = true
 						owner = newOwner
 						stateChan <- Lock{owner, Acquire}
 						log.Debug().
@@ -202,45 +222,17 @@ func (sc *SimpleClient) Pouncers(lockservice.Descriptors) []string {
 	panic("TODO")
 }
 
-// getFromCache checks the lock status on the descriptor in the cache.
-// This function returns an error if the cache doesn't exist or the
-// file is already acquired.
-func (sc *SimpleClient) getFromCache(d lockservice.Descriptors) error {
-	if sc.cache != nil {
-		err := sc.cache.GetElement(cache.NewSimpleKey(d.ID()))
-		if err == nil {
-			return lockservice.ErrFileAcquired
-		}
-		return nil
-	}
-	return cache.ErrCacheDoesntExist
-}
-
-func (sc *SimpleClient) addToCache(d lockservice.Descriptors) error {
-	if sc.cache != nil {
-		err := sc.cache.PutElement(cache.NewSimpleKey(d.ID()))
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return cache.ErrCacheDoesntExist
-}
-
-func (sc *SimpleClient) releaseFromCache(d lockservice.Descriptors) error {
-	if sc.cache != nil {
-		err := sc.cache.RemoveElement(cache.NewSimpleKey(d.ID()))
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return cache.ErrCacheDoesntExist
-}
-
 // CheckAcquire checks for acquisition of lock and returns the owner if the lock
 // is already acquired.
 func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) {
+	if sc.cache != nil {
+		owner, err := sc.getFromCache(d)
+		if err != nil {
+			return "", err
+		}
+		return owner, nil
+	}
+
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkAcquire"
 	data := lockservice.LockCheckRequest{FileID: d.ID()}
 	requestJSON, err := json.Marshal(data)
@@ -279,11 +271,38 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) 
 	return ownerData.Owner, nil
 }
 
-// watchLock wraps the process of getting the status of a lock
-// for cases with or without a cache.
-func (sc *SimpleClient) watchLock(d lockservice.Descriptors) (string, error) {
+// getFromCache checks the lock status on the descriptor in the cache.
+// This function returns an error if the cache doesn't exist or the
+// file is NOT acquired.
+func (sc *SimpleClient) getFromCache(d lockservice.Descriptors) (string, error) {
 	if sc.cache != nil {
-		return "", nil
+		owner, err := sc.cache.GetElement(cache.NewSimpleKey(d.ID(), d.Owner()))
+		if err != nil {
+			return "", lockservice.ErrCheckAcquireFailure
+		}
+		return owner, nil
 	}
-	return sc.CheckAcquire(d)
+	return "", cache.ErrCacheDoesntExist
+}
+
+func (sc *SimpleClient) addToCache(d lockservice.Descriptors) error {
+	if sc.cache != nil {
+		err := sc.cache.PutElement(cache.NewSimpleKey(d.ID(), d.Owner()))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return cache.ErrCacheDoesntExist
+}
+
+func (sc *SimpleClient) releaseFromCache(d lockservice.Descriptors) error {
+	if sc.cache != nil {
+		err := sc.cache.RemoveElement(cache.NewSimpleKey(d.ID(), d.Owner()))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return cache.ErrCacheDoesntExist
 }

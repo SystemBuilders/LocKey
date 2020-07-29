@@ -177,6 +177,53 @@ func TestLockService(t *testing.T) {
 		// wait to stop watching gracefully.
 		<-time.After(10 * time.Millisecond)
 	})
+
+	t.Run("lock watching with cache", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(scfg, cache)
+
+		assert := assert.New(t)
+		d := lockservice.NewSimpleDescriptor("test", "owner1")
+		// acquire the lock
+		err := sc.Acquire(d)
+		assert.Nil(err)
+
+		// start watching the lock.
+		quit := make(chan struct{}, 1)
+		stateChan, err := sc.Watch(d, quit)
+		assert.Nil(err)
+
+		states := []Lock{}
+		go func() {
+			for {
+				state := <-stateChan
+				states = append(states, state)
+			}
+		}()
+
+		err = sc.Release(d)
+		assert.Nil(err)
+
+		d1 := lockservice.NewSimpleDescriptor("test", "owner2")
+		err = sc.Acquire(d1)
+		assert.Nil(err)
+
+		err = sc.Release(d1)
+		assert.Nil(err)
+
+		d2 := lockservice.NewSimpleDescriptor("test", "owner3")
+		err = sc.Acquire(d2)
+		assert.Nil(err)
+
+		err = sc.Release(d2)
+		assert.Nil(err)
+
+		quit <- struct{}{}
+
+		// wait to stop watching gracefully.
+		<-time.After(10 * time.Millisecond)
+	})
 	quit <- true
 	return
 }

@@ -1,6 +1,9 @@
 package cache
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 var _ Cache = (*LRUCache)(nil)
 
@@ -30,6 +33,7 @@ type LRUCache struct {
 	tail     *DLLNode
 	m        map[interface{}]*DLLNode
 	dll      *DoublyLinkedList
+	mu       sync.Mutex
 }
 
 // NewLRUCache creates a new LRUCache of provided size.
@@ -50,10 +54,14 @@ func NewLRUCache(capacity int) *LRUCache {
 //
 // The element is removed from the map too because
 // it might have stale node values.
-func (lru *LRUCache) GetElement(element interface{}) error {
+//
+// Error is returned only if the element doesn't exist in the cache.
+func (lru *LRUCache) GetElement(element interface{}) (string, error) {
 	// Check whether the element exists in the cache.
-	if _, ok := lru.m[*element.(*SimpleKey)]; ok {
-		nodeOfKey := lru.m[*element.(*SimpleKey)]
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+	if node, ok := lru.m[*&element.(*SimpleKey).Value]; ok {
+		nodeOfKey := lru.m[*&element.(*SimpleKey).Value]
 		// Check whether the currently accessed element is the
 		// most recently used element in the cache. If it's not,
 		// it must be moved to the MRU to accomodate the protocol.
@@ -65,17 +73,17 @@ func (lru *LRUCache) GetElement(element interface{}) error {
 
 			// delete the old key so that it can be moved to MRU.
 			lru.dll.DeleteNode(nodeOfKey)
-			lru.deleteElementFromMap(*nodeOfKey.Key().(*SimpleKey))
+			lru.deleteElementFromMap(*&nodeOfKey.Key().(*SimpleKey).Value)
 
 			// Move the currently accessed node to the MRU position.
 			// The start pointer doesn't change as it still points to
 			// the LRU element.
 			lru.dll.InsertNodeToLeft(lru.dll.Head, nodeOfKey.NodeKey)
-			lru.insertElementIntoMap(*element.(*SimpleKey), lru.dll.Head)
+			lru.insertElementIntoMap(*&element.(*SimpleKey).Value, lru.dll.Head)
 		}
-		return nil
+		return node.NodeKey.Owner, nil
 	}
-	return ErrElementDoesntExist
+	return "", ErrElementDoesntExist
 }
 
 // PutElement inserts an element in the cache.
@@ -84,17 +92,19 @@ func (lru *LRUCache) GetElement(element interface{}) error {
 // Removal of the LRU is done my deleting the tail node,
 // making place for a new node.
 func (lru *LRUCache) PutElement(element interface{}) error {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	if !lru.full {
 		if lru.dll.Head == nil {
 			lru.dll.InsertNodeToRight(lru.dll.Head, element.(*SimpleKey))
-			err := lru.insertElementIntoMap(*element.(*SimpleKey), lru.dll.Head)
+			err := lru.insertElementIntoMap(*&element.(*SimpleKey).Value, lru.dll.Head)
 			if err != nil {
 				return err
 			}
 			lru.tail = lru.dll.Head.(*DLLNode)
 		} else {
 			lru.dll.InsertNodeToLeft(lru.dll.Head, element.(*SimpleKey))
-			err := lru.insertElementIntoMap(*element.(*SimpleKey), lru.dll.Head)
+			err := lru.insertElementIntoMap(*&element.(*SimpleKey).Value, lru.dll.Head)
 			if err != nil {
 				return err
 			}
@@ -106,7 +116,7 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 		}
 	} else {
 		lru.dll.InsertNodeToLeft(lru.dll.Head, element.(*SimpleKey))
-		err := lru.insertElementIntoMap(*element.(*SimpleKey), lru.dll.Head)
+		err := lru.insertElementIntoMap(*&element.(*SimpleKey).Value, lru.dll.Head)
 		if err != nil {
 			return err
 		}
@@ -116,7 +126,7 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 
 		// Delete the "start" node and make the newly inserted node the MRU node.
 		lru.dll.DeleteNode(tailNode)
-		lru.deleteElementFromMap(*tailNode.Key().(*SimpleKey))
+		lru.deleteElementFromMap(*&tailNode.Key().(*SimpleKey).Value)
 	}
 	return nil
 }
@@ -125,9 +135,11 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 // If there are multiple nodes with the same value, the node that was
 // most recently used will be removed.
 func (lru *LRUCache) RemoveElement(element interface{}) error {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	// Check if the node exists in the cache
-	if _, ok := lru.m[*element.(*SimpleKey)]; ok {
-		nodeOfKey := lru.m[*element.(*SimpleKey)]
+	if _, ok := lru.m[*&element.(*SimpleKey).Value]; ok {
+		nodeOfKey := lru.m[*&element.(*SimpleKey).Value]
 		// If there is only one element in the linked list, make the
 		// tail point to nil
 		//
@@ -138,9 +150,10 @@ func (lru *LRUCache) RemoveElement(element interface{}) error {
 		} else if lru.tail == nodeOfKey {
 			lru.tail = nodeOfKey.LeftNode.(*DLLNode)
 		}
+		// lru.PrintCache()
 		lru.size--
 		lru.dll.DeleteNode(nodeOfKey)
-		lru.deleteElementFromMap(*nodeOfKey.Key().(*SimpleKey))
+		lru.deleteElementFromMap(*&nodeOfKey.Key().(*SimpleKey).Value)
 		return nil
 
 	}
