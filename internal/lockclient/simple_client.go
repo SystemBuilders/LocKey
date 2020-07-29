@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
@@ -142,37 +141,14 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 // The stateChan is assumed to be cleared as soon as data is
 // sent through it.
 func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (chan Lock, error) {
-	stateChan := make(chan Lock, 10)
-	if sc.cache != nil {
-		err := sc.getFromCache(d)
-		if err != nil {
-			return nil, err
-		}
-		// Send the initial state of the lock and then
-		// keep sending state changes until stopped
-		// explicitly.
-		stateChan <- Lock{d.Owner(), Acquire}
-		go func() {
-			for {
-				select {
-				case <-quit:
-					return
-				default:
-					<-time.After(100 * time.Millisecond)
-					err := sc.getFromCache(d)
-					if err != nil {
-						return
-					}
-				}
-			}
-		}()
-		return stateChan, nil
-	}
-	// case of no cache
-	owner, err := sc.CheckAcquire(d)
+	stateChan := make(chan Lock, 1)
+	owner, err := sc.watchLock(d)
 	if err != nil {
 		return nil, err
 	}
+	// Send the initial state of the lock and then
+	// keep sending state changes until stopped
+	// explicitly.
 	stateChan <- Lock{owner, Acquire}
 	log.Debug().
 		Str("process", "lock watching").
@@ -187,7 +163,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 				log.Debug().Msg("stopped watching")
 				return
 			default:
-				newOwner, err := sc.CheckAcquire(d)
+				newOwner, err := sc.watchLock(d)
 				if err != nil {
 					if err == lockservice.ErrCheckAcquireFailure {
 						stateChan <- Lock{"", Release}
@@ -301,4 +277,13 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) 
 	}
 
 	return ownerData.Owner, nil
+}
+
+// watchLock wraps the process of getting the status of a lock
+// for cases with or without a cache.
+func (sc *SimpleClient) watchLock(d lockservice.Descriptors) (string, error) {
+	if sc.cache != nil {
+		return "", nil
+	}
+	return sc.CheckAcquire(d)
 }
