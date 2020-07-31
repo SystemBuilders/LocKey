@@ -17,16 +17,19 @@ var _ Config = (*lockservice.SimpleConfig)(nil)
 
 // SimpleClient implements Client, the lockclient for LocKey.
 type SimpleClient struct {
-	config *lockservice.SimpleConfig
-	cache  *cache.LRUCache
+	config   *lockservice.SimpleConfig
+	cache    *cache.LRUCache
+	pouncers map[lockservice.Descriptors][]string
 }
 
 // NewSimpleClient returns a new SimpleKey of the given value.
 // This client works with or without the existance of a cache.
 func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *SimpleClient {
+	p := make(map[lockservice.Descriptors][]string)
 	return &SimpleClient{
-		config: config,
-		cache:  cache,
+		config:   config,
+		cache:    cache,
+		pouncers: p,
 	}
 }
 
@@ -124,12 +127,12 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 	panic("TODO")
 }
 
-// Watch can be used to watch the given lock.
+// Watch can be used to watch the given lock descriptor.
 // This works with or without the existance of a cache
 // for the client.
 //
 // On calling Watch, the current state of the lock is
-// returned. If the lock is not acquired, the function returns.
+// returned.
 // If the lock is acquired by a different process, the
 // details of the acquirer is sent back and the function
 // doesn't return unless explicitly told to. Only on changes
@@ -141,6 +144,17 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 //
 // The stateChan is assumed to be cleared as soon as data is
 // sent through it.
+//
+// Usage:
+//		quitChan := make(chan struct{},1)
+//		stateChan, err := client.Watch(descriptor,quitChan)
+//		go func() {
+//			for {
+//				state := <-stateChan
+//				// process the state data.
+//			}
+//		}
+//
 func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (chan Lock, error) {
 	stateChan := make(chan Lock, 1)
 	// releaseNotification is true if the last notification wasn't a release.
@@ -213,13 +227,29 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 }
 
 // Pounce can be used to pounce on a waiting lock.
-func (sc *SimpleClient) Pounce(lockservice.Descriptors) error {
-	panic("TODO")
+//
+// This can be basically used as a reservation on any given
+// pre-acquired lock which can be acquired as soon as it's released.
+//
+// One lock can have many pouncers. The "pouncer" can choose to
+// wait on the "pounce" until it gets the lock or return if there was
+// a preceding "pouncer" for the lock.
+//
+// The "pouncer" can stop "pouncing" at any time by signalling through
+// the channel passed as the argument.
+//
+// The third boolean argument dictates the function to pounce or not
+// when there is an existng "pouncer". "true" for pounce even with "pouncers".
+//
+// The pounce returns on achieving its goal of acquiring the lock.
+func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, instant bool) error {
+
+	return nil
 }
 
-// Pouncers can be used to check the existing pouncers on a descriptor.
-func (sc *SimpleClient) Pouncers(lockservice.Descriptors) []string {
-	panic("TODO")
+// Pouncers returns the active "pouncers" on a descriptor.
+func (sc *SimpleClient) Pouncers(d lockservice.Descriptors) []string {
+	return sc.pouncers[d]
 }
 
 // CheckAcquire checks for acquisition of lock and returns the owner if the lock

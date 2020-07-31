@@ -29,7 +29,9 @@ type Client interface {
 	// acquired. This is similar to acquire but once a process has
 	// opted to pounce, they will be provided first access by having
 	// a queue of pouncers.
-	Pounce(lockservice.Descriptors) error
+	// The second and third arguments dictate the end of the pouncing
+	// reign and allows pouncing on pre-pounced objects respectively.
+	Pounce(lockservice.Descriptors, chan struct{}, bool) error
 	// Pouncers returns the current pouncers on any particular lock.
 	Pouncers(lockservice.Descriptors) []string
 }
