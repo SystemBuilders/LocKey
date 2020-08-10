@@ -16,16 +16,17 @@ type fsmSnapshot struct {
 
 func (f *fsm) Apply(l *raft.Log) interface{} {
 	var c command
+	fmt.Println("reached FSM Apply")
 	if err := json.Unmarshal(l.Data, &c); err != nil {
 		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
 	}
 
 	switch c.Op {
 	case "acquire":
-		return f.applyAcquire(c.Lock, c.Owner)
+		return f.applyAcquire(c.Key, c.Value)
 
 	case "release":
-		return f.applyRelease(c.Lock, c.Owner)
+		return f.applyRelease(c.Key, c.Value)
 
 	default:
 		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))

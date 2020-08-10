@@ -25,9 +25,8 @@ const (
 
 type command struct {
 	Op    string `json:"op,omitempty"`
-	Lock  string `json:"fileID,omitempty"`
-	Owner string `json:"userID,omitempty"`
-	Addr  string `json:"addr,omitempty"`
+	Key   string `json:"fileID,omitempty"`
+	Value string `json:"userID,omitempty"`
 }
 
 // A RaftStore encapsulates the http server (listener),
@@ -39,12 +38,12 @@ type RaftStore struct {
 	raftDir    string
 	raftAddr   string
 	RaftServer *raft.Raft
-	// we need a listener here. Node?
-	logger *log.Logger
+	ln         net.Listener
+	logger     *log.Logger
 }
 
 // NewRaftServer returns a RaftStore.
-func NewRaftServer(raftDir, raftAddr string, enableSingle bool) (*RaftStore, error) {
+func NewRaftServer(raftDir, raftAddr string) (*RaftStore, error) {
 	httpAddr, err := getHTTPAddr(raftAddr)
 	if err != nil {
 		return nil, err
@@ -129,7 +128,7 @@ func (rs *RaftStore) Acquire(fileID, userID string) error {
 	}
 
 	resp, err := http.Post(
-		fmt.Sprintf("http://%s/%s/fileID", httpAddr, rs.raftDir),
+		fmt.Sprintf("http://%s/acquire", httpAddr),
 		"application-type/json",
 		bytes.NewReader(b),
 	)
@@ -150,40 +149,40 @@ func (rs *RaftStore) Acquire(fileID, userID string) error {
 	// return nil
 }
 
-// Release calls the lockservice function Release().
-// This in turn checks if userID is the owner of fileID
-// and if it is, fileID is no longer locked.
-// However, if userID does not own fileID, then the lock
-// is not released.
-func (rs *RaftStore) Release(fileID, userID string) error {
-	b, err := json.Marshal(map[string]string{"fileID": fileID, "userID": userID})
-	if err != nil {
-		return err
-	}
+// // Release calls the lockservice function Release().
+// // This in turn checks if userID is the owner of fileID
+// // and if it is, fileID is no longer locked.
+// // However, if userID does not own fileID, then the lock
+// // is not released.
+// func (rs *RaftStore) Release(fileID, userID string) error {
+// 	b, err := json.Marshal(map[string]string{"fileID": fileID, "userID": userID})
+// 	if err != nil {
+// 		return err
+// 	}
 
-	httpAddr, err := getHTTPAddr(string(rs.RaftServer.Leader()))
+// 	httpAddr, err := getHTTPAddr(string(rs.RaftServer.Leader()))
 
-	if err != nil {
-		return err
-	}
+// 	if err != nil {
+// 		return err
+// 	}
 
-	resp, err := http.Post(
-		fmt.Sprintf("http://%s/%s/fileID/%s", httpAddr, rs.raftDir, fileID),
-		"application-type/json",
-		bytes.NewReader(b),
-	)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+// 	resp, err := http.Post(
+// 		fmt.Sprintf("http://%s/%s/fileID/%s", httpAddr, rs.raftDir, fileID),
+// 		"application-type/json",
+// 		bytes.NewReader(b),
+// 	)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer resp.Body.Close()
 
-	return nil
+// 	return nil
 
-	// desc := NewSimpleDescriptor(fileID, userID)
+// 	// desc := NewSimpleDescriptor(fileID, userID)
 
-	// err := rs.ls.Release(desc)
-	// if err != nil {
-	// 	return err
-	// }
-	// return nil
-}
+// 	// err := rs.ls.Release(desc)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+// 	// return nil
+// }

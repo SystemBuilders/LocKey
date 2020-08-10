@@ -17,6 +17,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// func (rs *lockservice.RaftStore) Start() error {
+// 	ln, err := net.Listen("tcp", rs.httpAddr)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	rs.ln = ln
+// 	server := http.Server{
+// 		Handler: rs,
+// 	}
+
+// }
+
 // Start begins the node's operation as a http server.
 func Start(ls *lockservice.SimpleLockService, scfg lockservice.SimpleConfig) error {
 
