@@ -2,7 +2,6 @@ package lockservice
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -38,13 +37,11 @@ func (rs *RaftStore) handleAcquire(w http.ResponseWriter, r *http.Request) {
 		Key:   req.FileID,
 		Value: req.UserID,
 	}
-	fmt.Printf("%v\n", c)
 	b, err := json.Marshal(c)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("REACHED handleAcquire %v\n", req)
 
 	f := rs.RaftServer.Apply(b, raftTimeout)
 	if f.Error() != nil {

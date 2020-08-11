@@ -18,7 +18,7 @@ func (rs *RaftStore) Start() error {
 	}
 	rs.ln = ln
 
-	http.Handle(fmt.Sprintf("/%s", rs.raftDir), rs)
+	http.Handle(fmt.Sprintf("/%s", rs.RaftDir), rs)
 
 	fmt.Printf("set up listener at %s\n", rs.httpAddr)
 	go func() {

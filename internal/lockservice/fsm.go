@@ -16,7 +16,6 @@ type fsmSnapshot struct {
 
 func (f *fsm) Apply(l *raft.Log) interface{} {
 	var c command
-	fmt.Println("reached FSM Apply")
 	if err := json.Unmarshal(l.Data, &c); err != nil {
 		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
 	}
@@ -49,6 +48,7 @@ func (f *fsm) applyRelease(lock, owner string) interface{} {
 
 	err := f.ls.Release(desc)
 	if err != nil {
+		fmt.Printf("%s\n", err)
 		return err
 	}
 	return nil
