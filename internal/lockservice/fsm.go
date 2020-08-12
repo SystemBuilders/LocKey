@@ -48,7 +48,6 @@ func (f *fsm) applyRelease(lock, owner string) interface{} {
 
 	err := f.ls.Release(desc)
 	if err != nil {
-		fmt.Printf("%s\n", err)
 		return err
 	}
 	return nil

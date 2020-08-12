@@ -43,6 +43,14 @@ func (rs *RaftStore) handleAcquire(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if acquire is possible
+	desc := NewSimpleDescriptor(req.FileID, req.UserID)
+	err = rs.ls.TryAcquire(desc)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// If possible, commit the change
 	f := rs.RaftServer.Apply(b, raftTimeout)
 	if f.Error() != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -77,6 +85,14 @@ func (rs *RaftStore) handleRelease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if release is possible
+	desc := NewSimpleDescriptor(req.FileID, req.UserID)
+	err = rs.ls.TryRelease(desc)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// If possible, commit the change
 	f := rs.RaftServer.Apply(b, raftTimeout)
 	if f.Error() != nil {
 		w.WriteHeader(http.StatusBadRequest)
