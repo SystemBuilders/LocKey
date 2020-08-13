@@ -1,9 +1,12 @@
 package lockservice
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -111,6 +114,37 @@ func (s *RaftStore) Open(enableSingle bool, localID string) error {
 			},
 		}
 		ra.BootstrapCluster(configuration)
+	}
+
+	return nil
+}
+
+func (rs *RaftStore) Join(addr string) error {
+	b, err := json.Marshal(map[string]string{"addr": addr})
+	if err != nil {
+		return err
+	}
+
+	var postAddr string
+	if rs.RaftServer.Leader() == "" {
+		postAddr = rs.RaftAddr
+	} else {
+		postAddr = string(rs.RaftServer.Leader())
+	}
+
+	httpAddr, err := getHTTPAddr(postAddr)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/join", httpAddr),
+		"application-type/json",
+		bytes.NewReader(b),
+	)
+	defer resp.Body.Close()
+	if err != nil {
+		return err
 	}
 
 	return nil

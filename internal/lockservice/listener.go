@@ -1,12 +1,16 @@
 package lockservice
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"net/http"
 )
 
+// Start starts the http service using the listener within a RaftStore.
+// The HTTP server is used to redirect commands like Set, Delete and Join
+// to the leader RaftStore in a cluster. The HTTP address is always
+// one away from the Raft address which the raft node uses for communication
+// with other raft nodes.
 func (rs *RaftStore) Start() error {
 	server := http.Server{
 		Handler: rs,
@@ -18,9 +22,6 @@ func (rs *RaftStore) Start() error {
 	}
 	rs.ln = ln
 
-	http.Handle(fmt.Sprintf("/%s", rs.RaftDir), rs)
-
-	fmt.Printf("set up listener at %s\n", rs.httpAddr)
 	go func() {
 		err := server.Serve(rs.ln)
 		if err != nil {

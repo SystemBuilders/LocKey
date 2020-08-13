@@ -1,6 +1,7 @@
 package lockservice
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -130,6 +131,7 @@ func (ls *SimpleLockService) TryAcquire(sd Descriptors) error {
 			Msg("can't acquire, already been acquired")
 		return ErrFileAcquired
 	}
+	fmt.Println("no problem with try acquire\n")
 	ls.lockMap.Mutex.Unlock()
 	return nil
 }
