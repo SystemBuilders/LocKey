@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -43,7 +42,6 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	}
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
-	fmt.Println(testData)
 	requestJSON, err := json.Marshal(testData)
 
 	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
@@ -61,7 +59,6 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(body)
 
 	if resp.StatusCode != 200 {
 		return errors.New(strings.TrimSpace(string(body)))

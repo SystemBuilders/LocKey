@@ -13,14 +13,9 @@ import (
 
 func (rs *RaftStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if getRaftAddr(rs.httpAddr) != string(rs.RaftServer.Leader()) {
-		// fmt.Printf("%s %s\n", rs.httpAddr, string(rs.RaftServer.Leader()))
-		// http.Redirect(w, r, string(rs.RaftServer.Leader()), http.StatusOK)
-		// return
 		url := r.URL
 		url.Host, _ = getHTTPAddr(string(rs.RaftServer.Leader()))
 		url.Scheme = "http"
-
-		fmt.Println(url.String())
 
 		proxyReq, err := http.NewRequest(r.Method, url.String(), r.Body)
 		if err != nil {
@@ -72,7 +67,6 @@ func (rs *RaftStore) handleAcquire(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("Reahed handleAcquire : %v", req)
 
 	c := &command{
 		Op:    "acquire",
@@ -146,7 +140,6 @@ func (rs *RaftStore) handleRelease(w http.ResponseWriter, r *http.Request) {
 
 // handleJoin actually applies the join upon receiving the http request.
 func (rs *RaftStore) handleJoin(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("reached handle join %s\n", rs.httpAddr)
 	m := map[string]string{}
 	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
@@ -164,10 +157,9 @@ func (rs *RaftStore) handleJoin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Printf("no error\n")
 
-	fmt.Printf("node at %s joined successfully", remoteAddr)
 	rs.logger.Printf("node at %s joined successfully", remoteAddr)
+	w.Write([]byte("joined cluster"))
 }
 
 // Join joins a node, identified by nodeID and located at addr, to this store.

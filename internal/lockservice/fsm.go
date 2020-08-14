@@ -20,7 +20,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
 	}
 
-	fmt.Println("reached apply")
 	switch c.Op {
 	case "acquire":
 		return f.applyAcquire(c.Key, c.Value)
@@ -35,7 +34,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 }
 
 func (f *fsm) applyAcquire(lock, owner string) interface{} {
-	fmt.Println("reached applyAcquire")
 	desc := NewSimpleDescriptor(lock, owner)
 
 	err := f.ls.Acquire(desc)

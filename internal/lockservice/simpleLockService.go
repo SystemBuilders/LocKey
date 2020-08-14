@@ -1,7 +1,6 @@
 package lockservice
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -20,7 +19,8 @@ type SimpleConfig struct {
 }
 
 // LockRequest is a struct used by the client to
-// communicate to the listener HTTP server
+// communicate to the HTTP server acting as a listener
+// for each Raft node
 type LockRequest struct {
 	FileID string `json:"FileID"`
 	UserID string `json:"UserID"`
@@ -118,7 +118,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 
 // TryAcquire checks if it is possible to lock a file.
 // It is used as a check before a acquire() action is
-// actually committedin the log of the distributed
+// actually committed in the log of the distributed
 // consensus algorithm.
 func (ls *SimpleLockService) TryAcquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
@@ -131,7 +131,6 @@ func (ls *SimpleLockService) TryAcquire(sd Descriptors) error {
 			Msg("can't acquire, already been acquired")
 		return ErrFileAcquired
 	}
-	fmt.Println("no problem with try acquire\n")
 	ls.lockMap.Mutex.Unlock()
 	return nil
 }
@@ -174,7 +173,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 
 // TryRelease checks if it is possible to release a file.
 // It is used as a check before a release() action is
-// actually committedin the log of the distributed
+// actually committed in the log of the distributed
 // consensus algorithm.
 func (ls *SimpleLockService) TryRelease(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
