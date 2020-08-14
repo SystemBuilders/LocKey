@@ -17,26 +17,27 @@ func TestAcquireandRelease(t *testing.T) {
 	quit := make(chan bool, 1)
 	go func() {
 		raftLS := consensus.New(true)
-
 		raftLS.RaftAddr = "127.0.0.1:5000"
 		raftLS.Open(true, "node0")
 		raftLS.Start()
 
+		// Give the server time to start up
 		time.Sleep(3 * time.Second)
-		raftLS2 := consensus.New(true)
 
+		raftLS2 := consensus.New(true)
 		raftLS2.RaftAddr = "127.0.0.1:6000"
 		raftLS2.Open(true, "node2")
 		raftLS2.Start()
 
-		fmt.Printf("joining")
-		raftLS.Join("127.0.0.1:6000", "node2")
-		time.Sleep(5 * time.Second)
-
 		time.Sleep(3 * time.Second)
 
-		raftLS3 := consensus.New(true)
+		fmt.Printf("joining")
+		raftLS.Join("127.0.0.1:6000", "node2")
 
+		// Extra time is needed for the join operation to complete
+		time.Sleep(5 * time.Second)
+
+		raftLS3 := consensus.New(true)
 		raftLS3.RaftAddr = "127.0.0.1:7000"
 		raftLS3.Open(true, "node3")
 		raftLS3.Start()
@@ -45,6 +46,7 @@ func TestAcquireandRelease(t *testing.T) {
 
 		fmt.Printf("joining")
 		raftLS.Join("127.0.0.1:7000", "node3")
+
 		time.Sleep(5 * time.Second)
 
 		for {
@@ -56,8 +58,8 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	}()
 
-	// Server takes some time to start
-	time.Sleep(30 * time.Second)
+	// Give time for the cluster to form
+	time.Sleep(25 * time.Second)
 	t.Run("acquire test release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
@@ -67,7 +69,6 @@ func TestAcquireandRelease(t *testing.T) {
 		d := lockservice.NewSimpleDescriptor("test", "owner")
 
 		got := sc.Acquire(d)
-		time.Sleep(5 * time.Second)
 		var want error
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
@@ -76,7 +77,6 @@ func TestAcquireandRelease(t *testing.T) {
 		d = lockservice.NewSimpleDescriptor("test1", "owner")
 
 		got = sc.Acquire(d)
-		time.Sleep(5 * time.Second)
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
@@ -84,7 +84,6 @@ func TestAcquireandRelease(t *testing.T) {
 		d = lockservice.NewSimpleDescriptor("test", "owner")
 
 		got = sc1.Release(d)
-		time.Sleep(5 * time.Second)
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
@@ -92,7 +91,6 @@ func TestAcquireandRelease(t *testing.T) {
 		d = lockservice.NewSimpleDescriptor("test1", "owner")
 
 		got = sc1.Release(d)
-		time.Sleep(5 * time.Second)
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
