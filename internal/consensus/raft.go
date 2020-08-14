@@ -31,7 +31,7 @@ type command struct {
 }
 
 // A RaftStore encapsulates the http server (listener),
-// a raft node (raftDir, raftAddr, RaftServer) and a
+// a raft node (RaftDir, RaftAddr, RaftServer) and a
 // lock service (SimpleLockService)
 type RaftStore struct {
 	httpAddr   string
@@ -164,6 +164,17 @@ func (rs *RaftStore) Join(addr, ID string) error {
 	return nil
 }
 
+// getHTTPAddr and getRaftAddr implement the mapping between
+// a Raft node and its HTTP listener.
+// The mapping is such that the listener's IP address is 1
+// more than that of the Raft node's.
+//
+// Given the address of a Raft node, getHTTPAddr() returns
+// the IP address of its listener
+//
+// Given the address of the HTTP listener of a Raft node,
+// getRaftAddr() returns the IP address of the corresponding
+// Raft node.
 func getHTTPAddr(raftAddr string) (string, error) {
 	addrParts := strings.Split(raftAddr, ":")
 	httpHost := addrParts[0]
@@ -172,5 +183,16 @@ func getHTTPAddr(raftAddr string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%s:%d", httpHost, port+1), nil
+
+}
+
+func getRaftAddr(raftAddr string) string {
+	addrParts := strings.Split(raftAddr, ":")
+	httpHost := addrParts[0]
+	port, err := strconv.Atoi(addrParts[1])
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d", httpHost, port-1)
 
 }

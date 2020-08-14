@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/hashicorp/raft"
 )
 
+// ServeHTTP is a function needed to allow RaftStore to act as a handler
+// to a HTTP server.
 func (rs *RaftStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if getRaftAddr(rs.httpAddr) != string(rs.RaftServer.Leader()) {
 		url := r.URL
@@ -198,15 +199,4 @@ func (rs *RaftStore) joinHelper(nodeID, addr string) error {
 	}
 	rs.logger.Printf("node %s at %s joined successfully", nodeID, addr)
 	return nil
-}
-
-func getRaftAddr(raftAddr string) string {
-	addrParts := strings.Split(raftAddr, ":")
-	httpHost := addrParts[0]
-	port, err := strconv.Atoi(addrParts[1])
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%s:%d", httpHost, port-1)
-
 }
