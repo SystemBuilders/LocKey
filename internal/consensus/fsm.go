@@ -1,10 +1,11 @@
-package lockservice
+package consensus
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/hashicorp/raft"
 )
 
@@ -34,7 +35,7 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 }
 
 func (f *fsm) applyAcquire(lock, owner string) interface{} {
-	desc := NewSimpleDescriptor(lock, owner)
+	desc := lockservice.NewSimpleDescriptor(lock, owner)
 
 	err := f.ls.Acquire(desc)
 	if err != nil {
@@ -44,7 +45,7 @@ func (f *fsm) applyAcquire(lock, owner string) interface{} {
 }
 
 func (f *fsm) applyRelease(lock, owner string) interface{} {
-	desc := NewSimpleDescriptor(lock, owner)
+	desc := lockservice.NewSimpleDescriptor(lock, owner)
 
 	err := f.ls.Release(desc)
 	if err != nil {
@@ -59,10 +60,7 @@ func (f *fsm) applyRelease(lock, owner string) interface{} {
 // Restore where the necessary data is replicated into the finite state machine.
 // This allows the consensus algorithm to truncate the replicated log.
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	f.ls.lockMap.Mutex.Lock()
-	defer f.ls.lockMap.Mutex.Unlock()
-
-	return &fsmSnapshot{lockMap: f.ls.lockMap.LockMap}, nil
+	return &fsmSnapshot{lockMap: f.ls.GetLockMap()}, nil
 }
 
 // Restores the lockMap to a previous state
@@ -74,7 +72,7 @@ func (f *fsm) Restore(lockMap io.ReadCloser) error {
 
 	// Set the state from snapshot. No need to use mutex lock according
 	// to Hasicorp doc
-	f.ls.lockMap.LockMap = lockMapSnapshot
+	f.ls.SetLockMap(lockMapSnapshot)
 
 	return nil
 }

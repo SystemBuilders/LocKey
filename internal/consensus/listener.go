@@ -1,4 +1,4 @@
-package lockservice
+package consensus
 
 import (
 	"log"

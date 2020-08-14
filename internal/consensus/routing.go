@@ -1,4 +1,4 @@
-package lockservice
+package consensus
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/hashicorp/raft"
 )
 
@@ -60,7 +61,7 @@ func (rs *RaftStore) handleAcquire(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req LockRequest
+	var req lockservice.LockRequest
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -80,7 +81,7 @@ func (rs *RaftStore) handleAcquire(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if acquire is possible
-	desc := NewSimpleDescriptor(req.FileID, req.UserID)
+	desc := lockservice.NewSimpleDescriptor(req.FileID, req.UserID)
 	err = rs.ls.TryAcquire(desc)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -103,7 +104,7 @@ func (rs *RaftStore) handleRelease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req LockRequest
+	var req lockservice.LockRequest
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -122,7 +123,7 @@ func (rs *RaftStore) handleRelease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if release is possible
-	desc := NewSimpleDescriptor(req.FileID, req.UserID)
+	desc := lockservice.NewSimpleDescriptor(req.FileID, req.UserID)
 	err = rs.ls.TryRelease(desc)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

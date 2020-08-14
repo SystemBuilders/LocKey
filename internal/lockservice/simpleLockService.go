@@ -243,3 +243,24 @@ func (ls *SimpleLockService) CheckReleased(sd Descriptors) bool {
 	ls.lockMap.Mutex.Unlock()
 	return true
 }
+
+// GetLockMap returns a copy of the current state of the
+// lockservice's lock map.
+// This function is used by the Snapshot() function of the
+// finite state machine of the distributed consensus algorithm
+func (ls *SimpleLockService) GetLockMap() map[string]string {
+	ls.lockMap.Mutex.Lock()
+	defer ls.lockMap.Mutex.Unlock()
+
+	return ls.lockMap.LockMap
+
+}
+
+// SetLockMap sets the LockMap used by SimpleLockService to
+// a snapshot of it that is passed as an argument to the
+// function
+func (ls *SimpleLockService) SetLockMap(lockMapSnapshot map[string]string) {
+	// Set the state from snapshot. No need to use mutex lock according
+	// to Hasicorp doc
+	ls.lockMap.LockMap = lockMapSnapshot
+}

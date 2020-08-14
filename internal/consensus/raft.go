@@ -1,4 +1,4 @@
-package lockservice
+package consensus
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
@@ -34,7 +35,7 @@ type command struct {
 // lock service (SimpleLockService)
 type RaftStore struct {
 	httpAddr   string
-	ls         *SimpleLockService
+	ls         *lockservice.SimpleLockService
 	inmem      bool
 	RaftDir    string
 	RaftAddr   string
@@ -46,7 +47,7 @@ type RaftStore struct {
 // New returns a new instance of RaftStore.
 func New(inmem bool) *RaftStore {
 	return &RaftStore{
-		ls:     NewSimpleLockService(zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())),
+		ls:     lockservice.NewSimpleLockService(zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())),
 		inmem:  inmem,
 		logger: log.New(os.Stderr, "[store] ", log.LstdFlags),
 	}
