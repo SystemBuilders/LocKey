@@ -60,11 +60,11 @@ func TestAcquireandRelease(t *testing.T) {
 		raftLS2 := lockservice.New(true)
 
 		raftLS2.RaftAddr = "127.0.0.1:6000"
-		raftLS2.Open(true, "node1")
+		raftLS2.Open(true, "node2")
 		raftLS2.Start()
 
 		fmt.Printf("joining")
-		raftLS.Join("127.0.0.1:6000")
+		raftLS.Join("127.0.0.1:6000", "node2")
 		time.Sleep(5 * time.Second)
 
 		time.Sleep(3 * time.Second)
@@ -72,13 +72,13 @@ func TestAcquireandRelease(t *testing.T) {
 		raftLS3 := lockservice.New(true)
 
 		raftLS3.RaftAddr = "127.0.0.1:7000"
-		raftLS3.Open(true, "node1")
+		raftLS3.Open(true, "node3")
 		raftLS3.Start()
 
 		time.Sleep(3 * time.Second)
 
 		fmt.Printf("joining")
-		raftLS.Join("127.0.0.1:7000")
+		raftLS.Join("127.0.0.1:7000", "node3")
 		time.Sleep(5 * time.Second)
 
 		for {

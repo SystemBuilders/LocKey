@@ -59,6 +59,7 @@ func (s *RaftStore) Open(enableSingle bool, localID string) error {
 	// Setup Raft configuration.
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(localID)
+	// config.ProtocolVersion = 2
 
 	httpAddr, err := getHTTPAddr(s.RaftAddr)
 	if err != nil {
@@ -119,8 +120,8 @@ func (s *RaftStore) Open(enableSingle bool, localID string) error {
 	return nil
 }
 
-func (rs *RaftStore) Join(addr string) error {
-	b, err := json.Marshal(map[string]string{"addr": addr})
+func (rs *RaftStore) Join(addr, ID string) error {
+	b, err := json.Marshal(map[string]string{"addr": addr, "id": ID})
 	if err != nil {
 		return err
 	}
@@ -150,47 +151,41 @@ func (rs *RaftStore) Join(addr string) error {
 	return nil
 }
 
-// // NewRaftServer returns a RaftStore.
-// func NewRaftServer(raftDir, raftAddr string) (*RaftStore, error) {
-// 	httpAddr, err := getHTTPAddr(raftAddr)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	rs := &RaftStore{
-// 		httpAddr: httpAddr,
-// 		ls:       NewSimpleLockService(zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())),
-// 		raftDir:  raftDir,
-// 		raftAddr: raftAddr,
-// 		logger:   log.New(os.Stderr, fmt.Sprintf("[raftStore | %s]", raftAddr), log.LstdFlags),
+// // Join joins a node, identified by nodeID and located at addr, to this store.
+// // The node must be ready to respond to Raft communications at that address.
+// func (s *RaftStore) Join(nodeID, addr string) error {
+// 	s.logger.Printf("received join request for remote node %s at %s", nodeID, addr)
+
+// 	configFuture := s.RaftServer.GetConfiguration()
+// 	if err := configFuture.Error(); err != nil {
+// 		s.logger.Printf("failed to get raft configuration: %v", err)
+// 		return err
 // 	}
 
-// 	// what file access controll is this? check.
-// 	if err := os.MkdirAll(raftDir, 0700); err != nil {
-// 		return nil, err
+// 	for _, srv := range configFuture.Configuration().Servers {
+// 		// If a node already exists with either the joining node's ID or address,
+// 		// that node may need to be removed from the config first.
+// 		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) {
+// 			// However if *both* the ID and the address are the same, then nothing -- not even
+// 			// a join operation -- is needed.
+// 			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
+// 				s.logger.Printf("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
+// 				return nil
+// 			}
+
+// 			future := s.RaftServer.RemoveServer(srv.ID, 0, 0)
+// 			if err := future.Error(); err != nil {
+// 				return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
+// 			}
+// 		}
 // 	}
 
-// 	config := raft.DefaultConfig()
-// 	transport, err := setupRaftCommunication(rs.raftAddr)
-// 	if err != nil {
-// 		return nil, err
+// 	f := s.RaftServer.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
+// 	if f.Error() != nil {
+// 		return f.Error()
 // 	}
-
-// 	snapshots, err := raft.NewFileSnapshotStore(rs.raftDir, retainSnapshotCount, os.Stderr)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("file snapshot store: %s", err)
-// 	}
-
-// 	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(rs.raftDir, "raft.db"))
-// 	if err != nil {
-// 		return nil, fmt.Errorf("new bolt store: %s", err)
-// 	}
-// 	logStore := boltDB
-// 	stableStore := boltDB
-
-// 	rft, err := raft.NewRaft(config, (*fsm)(rs), logStore, stableStore, snapshots, transport)
-
-// 	rs.RaftServer = rft
-// 	return rs, nil
+// 	s.logger.Printf("node %s at %s joined successfully", nodeID, addr)
+// 	return nil
 // }
 
 func getHTTPAddr(raftAddr string) (string, error) {
@@ -203,94 +198,3 @@ func getHTTPAddr(raftAddr string) (string, error) {
 	return fmt.Sprintf("%s:%d", httpHost, port+1), nil
 
 }
-
-// func setupRaftCommunication(raftAddr string) (*raft.NetworkTransport, error) {
-// 	addr, err := net.ResolveTCPAddr("tcp", raftAddr)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// What does the maxPool argument signify?
-// 	transport, err := raft.NewTCPTransport(raftAddr, addr, 3, 10*time.Second, os.Stderr)
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return transport, nil
-// }
-
-// // Acquire locks a File with ID fileID and sets its owner to userID.
-// // No other user is allowed access to a file once it is locked apart
-// // from its owner
-// func (rs *RaftStore) Acquire(fileID, userID string) error {
-// 	b, err := json.Marshal(map[string]string{"fileID": fileID, "userID": userID})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	httpAddr, err := getHTTPAddr(string(rs.RaftServer.Leader()))
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	resp, err := http.Post(
-// 		fmt.Sprintf("http://%s/acquire", httpAddr),
-// 		"application-type/json",
-// 		bytes.NewReader(b),
-// 	)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	defer resp.Body.Close()
-
-// 	return nil
-
-// 	// desc := NewSimpleDescriptor(fileID, userID)
-
-// 	// err := rs.ls.Acquire(desc)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-// 	// return nil
-// }
-
-// // Release calls the lockservice function Release().
-// // This in turn checks if userID is the owner of fileID
-// // and if it is, fileID is no longer locked.
-// // However, if userID does not own fileID, then the lock
-// // is not released.
-// func (rs *RaftStore) Release(fileID, userID string) error {
-// 	b, err := json.Marshal(map[string]string{"fileID": fileID, "userID": userID})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	httpAddr, err := getHTTPAddr(string(rs.RaftServer.Leader()))
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	resp, err := http.Post(
-// 		fmt.Sprintf("http://%s/%s/fileID/%s", httpAddr, rs.raftDir, fileID),
-// 		"application-type/json",
-// 		bytes.NewReader(b),
-// 	)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer resp.Body.Close()
-
-// 	return nil
-
-// 	// desc := NewSimpleDescriptor(fileID, userID)
-
-// 	// err := rs.ls.Release(desc)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-// 	// return nil
-// }
