@@ -29,8 +29,8 @@ type LockCheckRequest struct {
 	FileID string `json:"FileID"`
 }
 
-// CheckAcquireRes is the response of a CheckAcquire.
-type CheckAcquireRes struct {
+// CheckacquireRes is the response of a Checkacquire.
+type CheckacquireRes struct {
 	Owner string `json:"owner"`
 }
 
@@ -102,7 +102,7 @@ func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
 	}
 }
 
-// Acquire function lets a client acquire a lock on an object.
+// Acquire function lets a client Acquire a lock on an object.
 func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
@@ -112,7 +112,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 			Debug().
 			Str("descriptor", sd.ID()).
 			Msg("can't acquire, already been acquired")
-		return ErrFileAcquired
+		return ErrFileacquired
 	}
 	ls.lockMap.LockMap[sd.ID()] = sd.Owner()
 	ls.lockMap.Mutex.Unlock()
@@ -162,7 +162,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 
 }
 
-// CheckAcquired returns true if the file is acquired.
+// CheckAcquired returns true if the file is Acquired.
 // It also returns the owner of the file.
 func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 	ls.lockMap.Mutex.Lock()
@@ -173,14 +173,14 @@ func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 			log.
 			Debug().
 			Str("descriptor", id).
-			Msg("checkAcquire success")
+			Msg("checkacquire success")
 		return owner, true
 	}
 	ls.
 		log.
 		Debug().
 		Str("descriptor", id).
-		Msg("check Acquire failure")
+		Msg("check acquire failure")
 	ls.lockMap.Mutex.Unlock()
 	return "", false
 }

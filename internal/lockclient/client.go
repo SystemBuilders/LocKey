@@ -5,16 +5,24 @@ import "github.com/SystemBuilders/LocKey/internal/lockservice"
 // Client describes a client that can be used to interact with
 // the Lockey lockservice. The client can start the lockservice
 // and interact acquire and release locks by making calls to it.
+//
+// The client has the ability to start the lockservice from its
+// in-built function or it can be started separately.
+//
+// To acquire a lock on an object, the user is forced to go via
+// the Pounce function in order to maintain the order of lock
+// acquisition. No other function is exposed to the user for the
+// same.
 type Client interface {
 	// StartService starts the lockservice Lockey using the given
 	// configuration. It provides an appropriate error on failing
 	// to do so. Starting the service should be a non-blocking call
 	// and return as soon as the server is started and setup.
 	StartService(Config) error
-	// Acquire can be used to acquire a lock on Lockey. This
+	// acquire can be used to acquire a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.
-	Acquire(lockservice.Descriptors) error
+	acquire(lockservice.Descriptors) error
 	// Release can be used to release a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.
@@ -31,6 +39,7 @@ type Client interface {
 	// a queue of pouncers.
 	// The second and third arguments dictate the end of the pouncing
 	// reign and allows pouncing on pre-pounced objects respectively.
+	// True bool allows pouncing on pre-pounced objects.
 	Pounce(lockservice.Descriptors, chan struct{}, bool) error
 	// Pouncers returns the current pouncers on any particular lock.
 	Pouncers(lockservice.Descriptors) []string
@@ -49,7 +58,7 @@ type State int
 
 // These are the states of a lock.
 const (
-	Acquire State = iota
+	acquire State = iota
 	Release
 )
 

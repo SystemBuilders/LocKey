@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/SystemBuilders/LocKey/internal/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
@@ -20,6 +21,7 @@ type SimpleClient struct {
 	config   *lockservice.SimpleConfig
 	cache    *cache.LRUCache
 	pouncers map[lockservice.Descriptors][]string
+	mu       sync.Mutex
 }
 
 // NewSimpleClient returns a new SimpleKey of the given value.
@@ -35,15 +37,20 @@ func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *S
 
 var _ Client = (*SimpleClient)(nil)
 
-// Acquire makes an HTTP call to the lockserver and acquires the lock.
-// The errors involved may be due the HTTP errors or the lockservice errors.
+// Acquire internally calls Pounce in order to follow the FIFO order.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
+	return sc.Pounce(d, nil, false)
+}
+
+// acquire makes an HTTP call to the lockserver and acquires the lock.
+// The errors involved may be due the HTTP errors or the lockservice errors.
+func (sc *SimpleClient) acquire(d lockservice.Descriptors) error {
 	// Check for existance of a cache and check
 	// if the element is in the cache.
 	if sc.cache != nil {
 		_, err := sc.getFromCache(d)
 		// Since there can be network errors, we have this double check.
-		if err != nil && err != lockservice.ErrCheckAcquireFailure {
+		if err != nil && err != lockservice.ErrCheckacquireFailure {
 			return err
 		}
 	}
@@ -159,9 +166,9 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 	stateChan := make(chan Lock, 1)
 	// releaseNotification is true if the last notification wasn't a release.
 	releaseNotification := false
-	owner, err := sc.CheckAcquire(d)
+	owner, err := sc.Checkacquire(d)
 	if err != nil {
-		if err != lockservice.ErrCheckAcquireFailure {
+		if err != lockservice.ErrCheckacquireFailure {
 			return nil, err
 		}
 		// This means that the file is released
@@ -179,7 +186,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 	// explicitly.
 	if owner != "" {
 		releaseNotification = true
-		stateChan <- Lock{owner, Acquire}
+		stateChan <- Lock{owner, acquire}
 		log.Debug().
 			Str("process", "lock watching").
 			Str("lock", d.ID()).
@@ -194,9 +201,9 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 				log.Debug().Msg("stopped watching")
 				return
 			default:
-				newOwner, err := sc.CheckAcquire(d)
+				newOwner, err := sc.Checkacquire(d)
 				if err != nil {
-					if err != lockservice.ErrCheckAcquireFailure {
+					if err != lockservice.ErrCheckacquireFailure {
 						return
 					}
 					if releaseNotification {
@@ -212,7 +219,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 					if newOwner != owner {
 						releaseNotification = true
 						owner = newOwner
-						stateChan <- Lock{owner, Acquire}
+						stateChan <- Lock{owner, acquire}
 						log.Debug().
 							Str("process", "lock watching").
 							Str("lock", d.ID()).
@@ -239,22 +246,56 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 // the channel passed as the argument.
 //
 // The third boolean argument dictates the function to pounce or not
-// when there is an existng "pouncer". "true" for pounce even with "pouncers".
+// when there is an existng "pouncer", "true" for pounce even with "pouncers".
 //
 // The pounce returns on achieving its goal of acquiring the lock.
 func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, instant bool) error {
 
+	// Reject the pounce if the client doesn't want to pounce on
+	// pre-pounced objects.
+	if !instant && len(sc.Pouncers(d)) > 1 {
+		log.Debug().Msg("stopped pounce activity, object already under pounce")
+		return ErrorObjectAlreadyPouncedOn
+	}
+
+	// If there are no pouncers on the object, grant the lock
+	// to the client and return.
+	if len(sc.Pouncers(d)) == 0 {
+		return sc.acquire(d)
+	}
+
+	// When the pre-requisites are out of the way, the client
+	// process can be added to the queue of pouncers.
+	sc.pouncers[d] = append(sc.pouncers[d], d.Owner())
+
+	// Here we start waiting for the quit signal in order to
+	// end on command or wait on the lock state to grant access
+	// to the pouncer.
+	// The lock is continously watched and whenever the lock is
+	// released the first pouncer obtains the lock.
+	go func() {
+		for {
+			select {
+			case <-quit:
+				log.Debug().Msg("stop signal received, stopped pouncing activity")
+			default:
+
+			}
+		}
+	}()
 	return nil
 }
 
 // Pouncers returns the active "pouncers" on a descriptor.
 func (sc *SimpleClient) Pouncers(d lockservice.Descriptors) []string {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
 	return sc.pouncers[d]
 }
 
-// CheckAcquire checks for acquisition of lock and returns the owner if the lock
+// Checkacquire checks for acquisition of lock and returns the owner if the lock
 // is already acquired.
-func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) {
+func (sc *SimpleClient) Checkacquire(d lockservice.Descriptors) (string, error) {
 	if sc.cache != nil {
 		owner, err := sc.getFromCache(d)
 		if err != nil {
@@ -263,7 +304,7 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) 
 		return owner, nil
 	}
 
-	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkAcquire"
+	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkacquire"
 	data := lockservice.LockCheckRequest{FileID: d.ID()}
 	requestJSON, err := json.Marshal(data)
 	if err != nil {
@@ -292,7 +333,7 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.Descriptors) (string, error) 
 		return "", lockservice.Error(strings.TrimSpace(string(body)))
 	}
 
-	var ownerData lockservice.CheckAcquireRes
+	var ownerData lockservice.CheckacquireRes
 	err = json.Unmarshal(body, &ownerData)
 	if err != nil {
 		return "", err
@@ -308,7 +349,7 @@ func (sc *SimpleClient) getFromCache(d lockservice.Descriptors) (string, error) 
 	if sc.cache != nil {
 		owner, err := sc.cache.GetElement(cache.NewSimpleKey(d.ID(), d.Owner()))
 		if err != nil {
-			return "", lockservice.ErrCheckAcquireFailure
+			return "", lockservice.ErrCheckacquireFailure
 		}
 		return owner, nil
 	}
