@@ -19,10 +19,10 @@ type Client interface {
 	// to do so. Starting the service should be a non-blocking call
 	// and return as soon as the server is started and setup.
 	StartService(Config) error
-	// acquire can be used to acquire a lock on Lockey. This
+	// Acquire can be used to acquire a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.
-	acquire(lockservice.Descriptors) error
+	Acquire(lockservice.Descriptors) error
 	// Release can be used to release a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.

@@ -39,7 +39,7 @@ func TestLockService(t *testing.T) {
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
 
-		d := lockservice.NewSimpleDescriptor("test", "owner")
+		d := lockservice.NewLockDescriptor("test", "owner")
 
 		got := sc.acquire(d)
 		var want error
@@ -47,14 +47,14 @@ func TestLockService(t *testing.T) {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test1", "owner")
+		d = lockservice.NewLockDescriptor("test1", "owner")
 
 		got = sc.acquire(d)
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test", "owner")
+		d = lockservice.NewLockDescriptor("test", "owner")
 
 		got = sc.Release(d)
 
@@ -62,7 +62,7 @@ func TestLockService(t *testing.T) {
 			t.Errorf("release: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test1", "owner")
+		d = lockservice.NewLockDescriptor("test1", "owner")
 
 		got = sc.Release(d)
 
@@ -76,7 +76,7 @@ func TestLockService(t *testing.T) {
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
 
-		d := lockservice.NewSimpleDescriptor("test", "owner")
+		d := lockservice.NewLockDescriptor("test", "owner")
 
 		got := sc.acquire(d)
 		var want error
@@ -90,7 +90,7 @@ func TestLockService(t *testing.T) {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test", "owner")
+		d = lockservice.NewLockDescriptor("test", "owner")
 
 		got = sc.Release(d)
 		want = nil
@@ -104,28 +104,28 @@ func TestLockService(t *testing.T) {
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
 
-		d := lockservice.NewSimpleDescriptor("test", "owner1")
+		d := lockservice.NewLockDescriptor("test", "owner1")
 		got := sc.acquire(d)
 		var want error
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test", "owner2")
+		d = lockservice.NewLockDescriptor("test", "owner2")
 		got = sc.Release(d)
 		want = lockservice.ErrUnauthorizedAccess
 		if got != want {
 			t.Errorf("acquire: got %v want %v", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test2", "owner1")
+		d = lockservice.NewLockDescriptor("test2", "owner1")
 		got = sc.acquire(d)
 		want = nil
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		d = lockservice.NewSimpleDescriptor("test", "owner1")
+		d = lockservice.NewLockDescriptor("test", "owner1")
 		got = sc.Release(d)
 		want = nil
 		if got != want {
@@ -137,7 +137,7 @@ func TestLockService(t *testing.T) {
 		sc := NewSimpleClient(scfg, nil)
 
 		assert := assert.New(t)
-		d := lockservice.NewSimpleDescriptor("test", "owner1")
+		d := lockservice.NewLockDescriptor("test", "owner1")
 		// acquire the lock
 		err := sc.acquire(d)
 		assert.Nil(err)
@@ -158,14 +158,14 @@ func TestLockService(t *testing.T) {
 		err = sc.Release(d)
 		assert.Nil(err)
 
-		d1 := lockservice.NewSimpleDescriptor("test", "owner2")
+		d1 := lockservice.NewLockDescriptor("test", "owner2")
 		err = sc.acquire(d1)
 		assert.Nil(err)
 
 		err = sc.Release(d1)
 		assert.Nil(err)
 
-		d2 := lockservice.NewSimpleDescriptor("test", "owner3")
+		d2 := lockservice.NewLockDescriptor("test", "owner3")
 		err = sc.acquire(d2)
 		assert.Nil(err)
 
@@ -184,7 +184,7 @@ func TestLockService(t *testing.T) {
 		sc := NewSimpleClient(scfg, cache)
 
 		assert := assert.New(t)
-		d := lockservice.NewSimpleDescriptor("test", "owner1")
+		d := lockservice.NewLockDescriptor("test", "owner1")
 		// acquire the lock
 		err := sc.acquire(d)
 		assert.Nil(err)
@@ -205,14 +205,14 @@ func TestLockService(t *testing.T) {
 		err = sc.Release(d)
 		assert.Nil(err)
 
-		d1 := lockservice.NewSimpleDescriptor("test", "owner2")
+		d1 := lockservice.NewLockDescriptor("test", "owner2")
 		err = sc.acquire(d1)
 		assert.Nil(err)
 
 		err = sc.Release(d1)
 		assert.Nil(err)
 
-		d2 := lockservice.NewSimpleDescriptor("test", "owner3")
+		d2 := lockservice.NewLockDescriptor("test", "owner3")
 		err = sc.acquire(d2)
 		assert.Nil(err)
 
@@ -250,7 +250,7 @@ func BenchmarkLocKeyWithoutCache(b *testing.B) {
 	time.Sleep(100 * time.Millisecond)
 
 	sc := NewSimpleClient(scfg, nil)
-	d := lockservice.NewSimpleDescriptor("test", "owner")
+	d := lockservice.NewLockDescriptor("test", "owner")
 	for n := 0; n < b.N; n++ {
 		got := sc.acquire(d)
 		var want error
@@ -289,7 +289,7 @@ func BenchmarkLocKeyWithCache(b *testing.B) {
 	size := 5
 	cache := cache.NewLRUCache(size)
 	sc := NewSimpleClient(scfg, cache)
-	d := lockservice.NewSimpleDescriptor("test", "owner")
+	d := lockservice.NewLockDescriptor("test", "owner")
 	for n := 0; n < b.N; n++ {
 		got := sc.acquire(d)
 		var want error

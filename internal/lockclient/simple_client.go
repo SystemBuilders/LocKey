@@ -198,6 +198,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 		for {
 			select {
 			case <-quit:
+				close(stateChan)
 				log.Debug().Msg("stopped watching")
 				return
 			default:
@@ -273,16 +274,35 @@ func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, in
 	// to the pouncer.
 	// The lock is continously watched and whenever the lock is
 	// released the first pouncer obtains the lock.
-	go func() {
-		for {
-			select {
-			case <-quit:
-				log.Debug().Msg("stop signal received, stopped pouncing activity")
-			default:
+	q := make(chan struct{})
+	stateChan, err := sc.Watch(d, q)
+	for {
+		select {
+		case <-quit:
+			log.Debug().Msg("stop signal received, stopped pouncing activity")
+		default:
 
+			if err != nil {
+				return err
+			}
+			// Just check for one state change and then wait for
+			state := <-stateChan
+			// When there's a release operation that occurred, a
+			// new client process can get access to the lock.
+			// Always the first element in the slice is granted access
+			// to the lock on the object.
+			if state.LockState == Release {
+				op := sc.Pouncers(d)[0]
+				// Remove the first element from the slice.
+				sc.pouncers[d] = append(sc.pouncers[d][:0], sc.pouncers[d][1:]...)
+				desc := lockservice.NewLockDescriptor(d.ID(), op)
+				_ = sc.Acquire(desc)
 			}
 		}
-	}()
+		break
+	}
+	q <- struct{}{}
+	close(q)
 	return nil
 }
 

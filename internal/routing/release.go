@@ -24,7 +24,7 @@ func release(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	desc := &lockservice.SimpleDescriptor{
+	desc := &lockservice.LockDescriptor{
 		FileID: req.FileID,
 		UserID: req.UserID,
 	}
@@ -59,7 +59,7 @@ func checkReleased(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
-	desc := &lockservice.SimpleDescriptor{
+	desc := &lockservice.LockDescriptor{
 		FileID: req.FileID,
 		UserID: req.UserID,
 	}

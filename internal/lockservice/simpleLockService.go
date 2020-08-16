@@ -54,24 +54,24 @@ type SimpleLockService struct {
 	lockMap *SafeLockMap
 }
 
-var _ Descriptors = (*SimpleDescriptor)(nil)
+var _ Descriptors = (*LockDescriptor)(nil)
 
-// SimpleDescriptor implements the Descriptors interface.
+// LockDescriptor implements the Descriptors interface.
 // Many descriptors can be added to this struct and the ID
 // can be a combination of all those descriptors.
-type SimpleDescriptor struct {
+type LockDescriptor struct {
 	FileID string
 	UserID string
 }
 
 // ID represents the distinguishable ID of the descriptor.
-func (sd *SimpleDescriptor) ID() string {
+func (sd *LockDescriptor) ID() string {
 	return sd.FileID
 }
 
 // Owner represents the distinguishable ID of the entity that
 // holds the lock for FileID.
-func (sd *SimpleDescriptor) Owner() string {
+func (sd *LockDescriptor) Owner() string {
 	return sd.UserID
 }
 
@@ -83,9 +83,9 @@ func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	}
 }
 
-// NewSimpleDescriptor returns an instance of the SimpleDescriptor.
-func NewSimpleDescriptor(FileID, UserID string) *SimpleDescriptor {
-	return &SimpleDescriptor{
+// NewLockDescriptor returns an instance of the LockDescriptor.
+func NewLockDescriptor(FileID, UserID string) *LockDescriptor {
+	return &LockDescriptor{
 		FileID: FileID,
 		UserID: UserID,
 	}
