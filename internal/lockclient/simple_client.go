@@ -20,14 +20,14 @@ var _ Config = (*lockservice.SimpleConfig)(nil)
 type SimpleClient struct {
 	config   *lockservice.SimpleConfig
 	cache    *cache.LRUCache
-	pouncers map[lockservice.Descriptors][]string
+	pouncers map[lockservice.ObjectDescriptor][]string
 	mu       sync.Mutex
 }
 
 // NewSimpleClient returns a new SimpleKey of the given value.
 // This client works with or without the existance of a cache.
 func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *SimpleClient {
-	p := make(map[lockservice.Descriptors][]string)
+	p := make(map[lockservice.ObjectDescriptor][]string)
 	return &SimpleClient{
 		config:   config,
 		cache:    cache,
@@ -39,7 +39,7 @@ var _ Client = (*SimpleClient)(nil)
 
 // Acquire internally calls Pounce in order to follow the FIFO order.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
-	return sc.Pounce(d, nil, false)
+	return sc.Pounce(lockservice.ObjectDescriptor{ObjectID: d.ID()}, d.Owner(), nil, false)
 }
 
 // acquire makes an HTTP call to the lockserver and acquires the lock.
@@ -162,11 +162,11 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 //			}
 //		}
 //
-func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (chan Lock, error) {
+func (sc *SimpleClient) Watch(d lockservice.ObjectDescriptor, quit chan struct{}) (chan Lock, error) {
 	stateChan := make(chan Lock, 1)
 	// releaseNotification is true if the last notification wasn't a release.
 	releaseNotification := false
-	owner, err := sc.Checkacquire(d)
+	owner, err := sc.Checkacquire(&lockservice.LockDescriptor{FileID: d.ObjectID})
 	if err != nil {
 		if err != lockservice.ErrCheckacquireFailure {
 			return nil, err
@@ -177,7 +177,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 			stateChan <- Lock{"", Release}
 			log.Debug().
 				Str("process", "lock watching").
-				Str("lock", d.ID()).
+				Str("lock", d.ObjectID).
 				Msg("lock is in released state")
 		}
 	}
@@ -189,7 +189,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 		stateChan <- Lock{owner, acquire}
 		log.Debug().
 			Str("process", "lock watching").
-			Str("lock", d.ID()).
+			Str("lock", d.ObjectID).
 			Str("owner", owner).
 			Msg("lock is in acquired state")
 	}
@@ -202,7 +202,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 				log.Debug().Msg("stopped watching")
 				return
 			default:
-				newOwner, err := sc.Checkacquire(d)
+				newOwner, err := sc.Checkacquire(&lockservice.LockDescriptor{FileID: d.ObjectID})
 				if err != nil {
 					if err != lockservice.ErrCheckacquireFailure {
 						return
@@ -212,7 +212,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 						stateChan <- Lock{"", Release}
 						log.Debug().
 							Str("process", "lock watching").
-							Str("lock", d.ID()).
+							Str("lock", d.ObjectID).
 							Msg("lock is in released state")
 					}
 				} else {
@@ -223,7 +223,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 						stateChan <- Lock{owner, acquire}
 						log.Debug().
 							Str("process", "lock watching").
-							Str("lock", d.ID()).
+							Str("lock", d.ObjectID).
 							Str("owner", owner).
 							Msg("lock is in acquired state")
 					}
@@ -250,7 +250,7 @@ func (sc *SimpleClient) Watch(d lockservice.Descriptors, quit chan struct{}) (ch
 // when there is an existng "pouncer", "true" for pounce even with "pouncers".
 //
 // The pounce returns on achieving its goal of acquiring the lock.
-func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, instant bool) error {
+func (sc *SimpleClient) Pounce(d lockservice.ObjectDescriptor, owner string, quit chan struct{}, instant bool) error {
 
 	// Reject the pounce if the client doesn't want to pounce on
 	// pre-pounced objects.
@@ -262,12 +262,12 @@ func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, in
 	// If there are no pouncers on the object, grant the lock
 	// to the client and return.
 	if len(sc.Pouncers(d)) == 0 {
-		return sc.acquire(d)
+		return sc.acquire(&lockservice.LockDescriptor{FileID: d.ObjectID, UserID: owner})
 	}
 
 	// When the pre-requisites are out of the way, the client
 	// process can be added to the queue of pouncers.
-	sc.pouncers[d] = append(sc.pouncers[d], d.Owner())
+	sc.pouncers[d] = append(sc.pouncers[d], owner)
 
 	// Here we start waiting for the quit signal in order to
 	// end on command or wait on the lock state to grant access
@@ -295,7 +295,7 @@ func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, in
 				op := sc.Pouncers(d)[0]
 				// Remove the first element from the slice.
 				sc.pouncers[d] = append(sc.pouncers[d][:0], sc.pouncers[d][1:]...)
-				desc := lockservice.NewLockDescriptor(d.ID(), op)
+				desc := lockservice.NewLockDescriptor(d.ObjectID, op)
 				_ = sc.Acquire(desc)
 			}
 		}
@@ -307,7 +307,7 @@ func (sc *SimpleClient) Pounce(d lockservice.Descriptors, quit chan struct{}, in
 }
 
 // Pouncers returns the active "pouncers" on a descriptor.
-func (sc *SimpleClient) Pouncers(d lockservice.Descriptors) []string {
+func (sc *SimpleClient) Pouncers(d lockservice.ObjectDescriptor) []string {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	return sc.pouncers[d]

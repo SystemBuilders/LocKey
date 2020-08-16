@@ -56,6 +56,12 @@ type SimpleLockService struct {
 
 var _ Descriptors = (*LockDescriptor)(nil)
 
+// ObjectDescriptor describes the object that is subjected to
+// lock operations.
+type ObjectDescriptor struct {
+	ObjectID string
+}
+
 // LockDescriptor implements the Descriptors interface.
 // Many descriptors can be added to this struct and the ID
 // can be a combination of all those descriptors.
@@ -88,6 +94,13 @@ func NewLockDescriptor(FileID, UserID string) *LockDescriptor {
 	return &LockDescriptor{
 		FileID: FileID,
 		UserID: UserID,
+	}
+}
+
+// NewObjectDescriptor returns an instance of the ObjectDescriptor.
+func NewObjectDescriptor(ObjectID string) *ObjectDescriptor {
+	return &ObjectDescriptor{
+		ObjectID: ObjectID,
 	}
 }
 
