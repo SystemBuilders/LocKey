@@ -296,7 +296,13 @@ func (sc *SimpleClient) Pounce(d lockservice.ObjectDescriptor, owner string, qui
 				// Remove the first element from the slice.
 				sc.pouncers[d] = append(sc.pouncers[d][:0], sc.pouncers[d][1:]...)
 				desc := lockservice.NewLockDescriptor(d.ObjectID, op)
+				// Errors arising here aren't propagated because this
+				// process doesn't care about it.
 				_ = sc.Acquire(desc)
+				// Exit condition is the pouncer getting access to the lock.
+				if op == owner {
+					return nil
+				}
 			}
 		}
 		break
