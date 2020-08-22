@@ -224,6 +224,186 @@ func TestLockService(t *testing.T) {
 		// wait to stop watching gracefully.
 		<-time.After(10 * time.Millisecond)
 	})
+
+	// This test first makes a process acquire a lock.
+	// Later, pounces using 3 different owners on the same object,
+	// and then release one by one and observe the behaviour and
+	// assert the expected behaviour.
+	// Time waits are added in order to maintain the sequence of
+	// pounces and have a deterministic test.
+	t.Run("pounce test without quitting in between, always wait for object", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(scfg, cache)
+
+		assert := assert.New(t)
+		d := lockservice.NewLockDescriptor("test", "owner")
+		err := sc.Acquire(d)
+		assert.NoError(err)
+
+		objD := lockservice.NewObjectDescriptor("test")
+
+		go func() {
+			err = sc.Pounce(*objD, "owner1", nil, true)
+			assert.NoError(err)
+		}()
+
+		go func() {
+			<-time.After(100 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner2", nil, true)
+			assert.NoError(err)
+		}()
+
+		go func() {
+			<-time.After(500 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner3", nil, true)
+			assert.NoError(err)
+		}()
+
+		pouncersBeforeFirstRelease := []string{"owner1", "owner2", "owner3"}
+		pouncersAfterFirstRelease := []string{"owner2", "owner3"}
+		pouncersAfterSecondRelease := []string{"owner3"}
+		pouncersAfterThirdRelease := []string{}
+
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersBeforeFirstRelease)
+
+		err = sc.Release(d)
+		assert.NoError(err)
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterFirstRelease)
+
+		<-time.After(1 * time.Second)
+		owner, err := sc.Checkacquire(*objD)
+		if owner == "owner1" {
+			err = sc.Release(&lockservice.LockDescriptor{FileID: objD.ObjectID, UserID: "owner1"})
+			assert.NoError(err)
+		}
+
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterSecondRelease)
+
+		<-time.After(1 * time.Second)
+		owner, err = sc.Checkacquire(*objD)
+		if owner == "owner2" {
+			err = sc.Release(&lockservice.LockDescriptor{FileID: objD.ObjectID, UserID: "owner2"})
+			assert.NoError(err)
+		}
+
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterThirdRelease)
+	})
+
+	// This test is very similar to the one above but owner2 doensn't wait for its pounce.
+	t.Run("pounce test without quitting in between, without waiting for object", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(scfg, cache)
+
+		assert := assert.New(t)
+		d := lockservice.NewLockDescriptor("test1", "owner")
+		err := sc.Acquire(d)
+		assert.NoError(err)
+
+		objD := lockservice.NewObjectDescriptor("test1")
+
+		go func() {
+			err = sc.Pounce(*objD, "owner1", nil, true)
+			assert.NoError(err)
+		}()
+
+		go func() {
+			<-time.After(100 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner2", nil, false)
+			if err != ErrorObjectAlreadyPouncedOn {
+				assert.NoError(err)
+			}
+		}()
+
+		go func() {
+			<-time.After(500 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner3", nil, true)
+			assert.NoError(err)
+		}()
+
+		pouncersBeforeFirstRelease := []string{"owner1", "owner3"}
+		pouncersAfterFirstRelease := []string{"owner3"}
+		pouncersAfterSecondRelease := []string{}
+
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersBeforeFirstRelease)
+
+		err = sc.Release(d)
+		assert.NoError(err)
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterFirstRelease)
+
+		<-time.After(1 * time.Second)
+		owner, err := sc.Checkacquire(*objD)
+		if owner == "owner1" {
+			err = sc.Release(&lockservice.LockDescriptor{FileID: objD.ObjectID, UserID: "owner1"})
+			assert.NoError(err)
+		}
+
+		<-time.After(2 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterSecondRelease)
+	})
+
+	// This test is very similar to the one above but a quit signal is sent to owner2's pounce.
+	t.Run("pounce test without quitting in between, without waiting for object", func(t *testing.T) {
+		size := 5
+		cache := cache.NewLRUCache(size)
+		sc := NewSimpleClient(scfg, cache)
+
+		assert := assert.New(t)
+		d := lockservice.NewLockDescriptor("testx", "owner")
+
+		quitChan := make(chan struct{}, 1)
+		err := sc.Acquire(d)
+		assert.NoError(err)
+
+		objD := lockservice.NewObjectDescriptor("testx")
+
+		go func() {
+			err = sc.Pounce(*objD, "owner1", nil, true)
+			assert.NoError(err)
+		}()
+
+		go func() {
+			<-time.After(100 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner2", quitChan, true)
+		}()
+
+		go func() {
+			<-time.After(500 * time.Millisecond)
+			err = sc.Pounce(*objD, "owner3", nil, true)
+			assert.NoError(err)
+		}()
+
+		pouncersBeforeFirstRelease := []string{"owner1", "owner2", "owner3"}
+		pouncersAfterFirstRelease := []string{"owner3"}
+		pouncersAfterSecondRelease := []string{}
+
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersBeforeFirstRelease)
+
+		quitChan <- struct{}{}
+		err = sc.Release(d)
+		assert.NoError(err)
+		<-time.After(1 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterFirstRelease)
+
+		<-time.After(1 * time.Second)
+		owner, err := sc.Checkacquire(*objD)
+		if owner == "owner1" {
+			err = sc.Release(&lockservice.LockDescriptor{FileID: objD.ObjectID, UserID: "owner1"})
+			assert.NoError(err)
+		}
+
+		<-time.After(2 * time.Second)
+		assert.Equal(sc.Pouncers(*objD), pouncersAfterSecondRelease)
+	})
+
 	quit <- true
 	return
 }
