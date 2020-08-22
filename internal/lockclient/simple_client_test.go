@@ -244,19 +244,19 @@ func TestLockService(t *testing.T) {
 		objD := lockservice.NewObjectDescriptor("test")
 
 		go func() {
-			err = sc.Pounce(*objD, "owner1", nil, true)
+			err := sc.Pounce(*objD, "owner1", nil, true)
 			assert.NoError(err)
 		}()
 
 		go func() {
 			<-time.After(100 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner2", nil, true)
+			err := sc.Pounce(*objD, "owner2", nil, true)
 			assert.NoError(err)
 		}()
 
 		go func() {
 			<-time.After(500 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner3", nil, true)
+			err := sc.Pounce(*objD, "owner3", nil, true)
 			assert.NoError(err)
 		}()
 
@@ -308,13 +308,13 @@ func TestLockService(t *testing.T) {
 		objD := lockservice.NewObjectDescriptor("test1")
 
 		go func() {
-			err = sc.Pounce(*objD, "owner1", nil, true)
+			err := sc.Pounce(*objD, "owner1", nil, true)
 			assert.NoError(err)
 		}()
 
 		go func() {
 			<-time.After(100 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner2", nil, false)
+			err := sc.Pounce(*objD, "owner2", nil, false)
 			if err != ErrorObjectAlreadyPouncedOn {
 				assert.NoError(err)
 			}
@@ -322,7 +322,7 @@ func TestLockService(t *testing.T) {
 
 		go func() {
 			<-time.After(500 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner3", nil, true)
+			err := sc.Pounce(*objD, "owner3", nil, true)
 			assert.NoError(err)
 		}()
 
@@ -365,18 +365,19 @@ func TestLockService(t *testing.T) {
 		objD := lockservice.NewObjectDescriptor("testx")
 
 		go func() {
-			err = sc.Pounce(*objD, "owner1", nil, true)
+			err := sc.Pounce(*objD, "owner1", nil, true)
 			assert.NoError(err)
 		}()
 
 		go func() {
 			<-time.After(100 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner2", quitChan, true)
+			err := sc.Pounce(*objD, "owner2", quitChan, true)
+			assert.NoError(err)
 		}()
 
 		go func() {
 			<-time.After(500 * time.Millisecond)
-			err = sc.Pounce(*objD, "owner3", nil, true)
+			err := sc.Pounce(*objD, "owner3", nil, true)
 			assert.NoError(err)
 		}()
 
