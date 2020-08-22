@@ -350,7 +350,7 @@ func TestLockService(t *testing.T) {
 	})
 
 	// This test is very similar to the one above but a quit signal is sent to owner2's pounce.
-	t.Run("pounce test without quitting in between, without waiting for object", func(t *testing.T) {
+	t.Run("pounce test with quitting in between, without waiting for object", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(scfg, cache)
