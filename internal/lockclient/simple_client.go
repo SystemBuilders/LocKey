@@ -312,8 +312,9 @@ func (sc *SimpleClient) Pounce(d lockservice.ObjectDescriptor, owner string, qui
 			// to the lock on the object.
 			if state.LockState == Release {
 				var op string
-				if len(sc.Pouncers(d)) > 0 {
-					op = sc.Pouncers(d)[0]
+				pouncers := sc.Pouncers(d)
+				if len(pouncers) > 0 {
+					op = pouncers[0]
 				}
 
 				// Errors arising here aren't propagated because this
@@ -354,8 +355,12 @@ func (sc *SimpleClient) Pounce(d lockservice.ObjectDescriptor, owner string, qui
 // This is safe to read concurrently.
 func (sc *SimpleClient) Pouncers(d lockservice.ObjectDescriptor) []string {
 	sc.mu.Lock()
-	defer sc.mu.Unlock()
-	return sc.pouncers[d]
+	var x = make([]string, len(sc.pouncers[d]))
+	copy(x, sc.pouncers[d])
+	sc.mu.Unlock()
+	// fmt.Println(x)
+	// fmt.Println(sc.pouncers[d])
+	return x
 }
 
 // Checkacquire checks for acquisition of lock and returns the owner if the lock
