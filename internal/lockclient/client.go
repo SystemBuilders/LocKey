@@ -35,7 +35,7 @@ type Client interface {
 	// will be notified about the change.
 	// The channel passed as the argument can be used to stop watching
 	// at any point of time.
-	Watch(lockservice.ObjectDescriptor, chan struct{}) (chan Lock, error)
+	watch(lockservice.ObjectDescriptor, chan struct{}) (chan Lock, error)
 	// Pounce can be used to "pounce" on a lock that has already been
 	// acquired. This is similar to acquire but once a process has
 	// opted to pounce, they will be provided first access by having
@@ -43,9 +43,9 @@ type Client interface {
 	// The second, third and fourth arguments dictate the end of the pouncing
 	// reign, the owner willing to pounce and allows pouncing on pre-pounced
 	// objects respectively. True bool allows pouncing on pre-pounced objects.
-	Pounce(lockservice.ObjectDescriptor, string, chan struct{}, bool) error
+	pounce(lockservice.ObjectDescriptor, string, chan struct{}, bool) error
 	// Pouncers returns the current pouncers on any particular lock.
-	Pouncers(lockservice.ObjectDescriptor) []string
+	pouncers(lockservice.ObjectDescriptor) []string
 }
 
 // Config describes the configuration for the lockservice to run on.

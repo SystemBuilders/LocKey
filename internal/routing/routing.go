@@ -18,7 +18,7 @@ func SetupRouting(ls *lockservice.SimpleLockService, r *mux.Router) *mux.Router 
 
 func makeacquireHandler(ls *lockservice.SimpleLockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		Acquire(w, r, ls)
+		acquire(w, r, ls)
 	}
 }
 

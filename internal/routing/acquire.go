@@ -8,7 +8,8 @@ import (
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
-func Acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
+// acquire wraps the lock Acquire function and creates a clean HTTP service.
+func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
