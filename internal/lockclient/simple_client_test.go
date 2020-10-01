@@ -144,7 +144,7 @@ func TestLockService(t *testing.T) {
 
 		// start watching the lock.
 		quit := make(chan struct{}, 1)
-		stateChan, err := sc.Watch(lockservice.ObjectDescriptor{ObjectID: d.ID()}, quit)
+		stateChan, err := sc.watch(lockservice.ObjectDescriptor{ObjectID: d.ID()}, quit)
 		assert.Nil(err)
 
 		states := []Lock{}
@@ -191,7 +191,7 @@ func TestLockService(t *testing.T) {
 
 		// start watching the lock.
 		quit := make(chan struct{}, 1)
-		stateChan, err := sc.Watch(lockservice.ObjectDescriptor{ObjectID: d.ID()}, quit)
+		stateChan, err := sc.watch(lockservice.ObjectDescriptor{ObjectID: d.ID()}, quit)
 		assert.Nil(err)
 
 		states := []Lock{}
