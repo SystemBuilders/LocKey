@@ -47,7 +47,8 @@ func NewLRUCache(capacity int) *LRUCache {
 	}
 }
 
-// GetElement gets an element from the cache.
+// GetElement gets an element from the cache. It returns
+// the associated data with the element with an error.
 //
 // Whenever an element is retrieved from the cache,
 // it's bumped to the MRU position in the DLL.
@@ -150,7 +151,6 @@ func (lru *LRUCache) RemoveElement(element interface{}) error {
 		} else if lru.tail == nodeOfKey {
 			lru.tail = nodeOfKey.LeftNode.(*DLLNode)
 		}
-		// lru.PrintCache()
 		lru.size--
 		lru.dll.DeleteNode(nodeOfKey)
 		lru.deleteElementFromMap(*&nodeOfKey.Key().(*SimpleKey).Value)

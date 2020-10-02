@@ -8,6 +8,9 @@ import "github.com/SystemBuilders/LocKey/internal/lockservice"
 //
 // The client has the ability to start the lockservice from its
 // in-built function or it can be started separately.
+//
+// The client allows the user to Acquire a lock and Release a lock,
+// using it's descriptor.
 type Client interface {
 	// StartService starts the lockservice Lockey using the given
 	// configuration. It provides an appropriate error on failing
