@@ -1,27 +1,54 @@
 package lockclient
 
 import (
-	"os"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/SystemBuilders/LocKey/internal/cache"
+	"github.com/SystemBuilders/LocKey/internal/consensus"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
-	"github.com/SystemBuilders/LocKey/internal/node"
-
-	"github.com/rs/zerolog"
 )
 
 func TestAcquireandRelease(t *testing.T) {
-	zerolog.New(os.Stdout).With()
-
-	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
-	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "5001")
+	scfg1 := lockservice.NewSimpleConfig("http://127.0.0.1", "7001")
 
 	quit := make(chan bool, 1)
 	go func() {
-		node.Start(ls, *scfg)
+		raftLS := consensus.New(true)
+		raftLS.RaftAddr = "127.0.0.1:5000"
+		raftLS.Open(true, "node0")
+		raftLS.Start()
+
+		// Give the server time to start up
+		time.Sleep(3 * time.Second)
+
+		raftLS2 := consensus.New(true)
+		raftLS2.RaftAddr = "127.0.0.1:6000"
+		raftLS2.Open(true, "node2")
+		raftLS2.Start()
+
+		time.Sleep(3 * time.Second)
+
+		fmt.Printf("joining")
+		raftLS.Join("127.0.0.1:6000", "node2")
+
+		// Extra time is needed for the join operation to complete
+		time.Sleep(5 * time.Second)
+
+		raftLS3 := consensus.New(true)
+		raftLS3.RaftAddr = "127.0.0.1:7000"
+		raftLS3.Open(true, "node3")
+		raftLS3.Start()
+
+		time.Sleep(3 * time.Second)
+
+		fmt.Printf("joining")
+		raftLS.Join("127.0.0.1:7000", "node3")
+
+		time.Sleep(5 * time.Second)
+
 		for {
 			select {
 			case <-quit:
@@ -31,12 +58,13 @@ func TestAcquireandRelease(t *testing.T) {
 		}
 	}()
 
-	// Server takes some time to start
-	time.Sleep(100 * time.Millisecond)
+	// Give time for the cluster to form
+	time.Sleep(25 * time.Second)
 	t.Run("acquire test release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
 		sc := NewSimpleClient(*scfg, *cache)
+		sc1 := NewSimpleClient(*scfg1, *cache)
 
 		d := lockservice.NewSimpleDescriptor("test", "owner")
 
@@ -55,16 +83,14 @@ func TestAcquireandRelease(t *testing.T) {
 
 		d = lockservice.NewSimpleDescriptor("test", "owner")
 
-		got = sc.Release(d)
-
+		got = sc1.Release(d)
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
 
 		d = lockservice.NewSimpleDescriptor("test1", "owner")
 
-		got = sc.Release(d)
-
+		got = sc1.Release(d)
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
@@ -114,7 +140,7 @@ func TestAcquireandRelease(t *testing.T) {
 		got = sc.Release(d)
 		want = lockservice.ErrUnauthorizedAccess
 		if got != want {
-			t.Errorf("acquire: got %v want %v", got, want)
+			t.Errorf("release: got %v want %v", got, want)
 		}
 
 		d = lockservice.NewSimpleDescriptor("test2", "owner1")

@@ -20,7 +20,7 @@ type SimpleClient struct {
 	cache  cache.LRUCache
 }
 
-// NewSimpleKey returns a new SimpleKey of the given value.
+// NewSimpleClient returns a new instance of SimpleClient
 func NewSimpleClient(config lockservice.SimpleConfig, cache cache.LRUCache) *SimpleClient {
 	return &SimpleClient{
 		config: config,
@@ -42,9 +42,9 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
 	}
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
-	requestJson, err := json.Marshal(testData)
+	requestJSON, err := json.Marshal(testData)
 
-	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
+	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
 	if err != nil {
 		return err
 	}
@@ -77,8 +77,8 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 
 	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
-	requestJson, err := json.Marshal(testData)
-	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJson))
+	requestJSON, err := json.Marshal(testData)
+	req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

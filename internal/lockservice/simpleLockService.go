@@ -18,11 +18,15 @@ type SimpleConfig struct {
 	PortAddr string
 }
 
+// LockRequest is a struct used by the client to
+// communicate to the HTTP server acting as a listener
+// for each Raft node
 type LockRequest struct {
 	FileID string `json:"FileID"`
 	UserID string `json:"UserID"`
 }
 
+// IP returns the IP address from SimpleConfig
 func (scfg *SimpleConfig) IP() string {
 	return scfg.IPAddr
 }
@@ -63,6 +67,7 @@ func (sd *SimpleDescriptor) Owner() string {
 	return sd.UserID
 }
 
+// NewSimpleConfig returns a new simple configuration
 func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	return &SimpleConfig{
 		IPAddr:   IPAddr,
@@ -70,6 +75,7 @@ func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	}
 }
 
+// NewSimpleDescriptor returns a new simple descriptor
 func NewSimpleDescriptor(FileID, UserID string) *SimpleDescriptor {
 	return &SimpleDescriptor{
 		FileID: FileID,
@@ -110,6 +116,25 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	return nil
 }
 
+// TryAcquire checks if it is possible to lock a file.
+// It is used as a check before a acquire() action is
+// actually committed in the log of the distributed
+// consensus algorithm.
+func (ls *SimpleLockService) TryAcquire(sd Descriptors) error {
+	ls.lockMap.Mutex.Lock()
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
+		ls.lockMap.Mutex.Unlock()
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't acquire, already been acquired")
+		return ErrFileAcquired
+	}
+	ls.lockMap.Mutex.Unlock()
+	return nil
+}
+
 // Release lets a client to release a lock on an object.
 func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
@@ -122,6 +147,37 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			Debug().
 			Str("descriptor", sd.ID()).
 			Msg("released")
+		ls.lockMap.Mutex.Unlock()
+		return nil
+	} else if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, hasn't been acquired")
+		ls.lockMap.Mutex.Unlock()
+		return ErrCantReleaseFile
+
+	} else {
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, unauthorized access")
+		ls.lockMap.Mutex.Unlock()
+		return ErrUnauthorizedAccess
+
+	}
+
+}
+
+// TryRelease checks if it is possible to release a file.
+// It is used as a check before a release() action is
+// actually committed in the log of the distributed
+// consensus algorithm.
+func (ls *SimpleLockService) TryRelease(sd Descriptors) error {
+	ls.lockMap.Mutex.Lock()
+	if ls.lockMap.LockMap[sd.ID()] == sd.Owner() {
 		ls.lockMap.Mutex.Unlock()
 		return nil
 	} else if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
@@ -186,4 +242,25 @@ func (ls *SimpleLockService) CheckReleased(sd Descriptors) bool {
 		Msg("checkRelease success")
 	ls.lockMap.Mutex.Unlock()
 	return true
+}
+
+// GetLockMap returns a copy of the current state of the
+// lockservice's lock map.
+// This function is used by the Snapshot() function of the
+// finite state machine of the distributed consensus algorithm
+func (ls *SimpleLockService) GetLockMap() map[string]string {
+	ls.lockMap.Mutex.Lock()
+	defer ls.lockMap.Mutex.Unlock()
+
+	return ls.lockMap.LockMap
+
+}
+
+// SetLockMap sets the LockMap used by SimpleLockService to
+// a snapshot of it that is passed as an argument to the
+// function
+func (ls *SimpleLockService) SetLockMap(lockMapSnapshot map[string]string) {
+	// Set the state from snapshot. No need to use mutex lock according
+	// to Hasicorp doc
+	ls.lockMap.LockMap = lockMapSnapshot
 }
