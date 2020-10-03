@@ -115,7 +115,7 @@ func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
 	}
 }
 
-// Acquire function lets a client Acquire a lock on an object.
+// Acquire function lets a client acquire a lock on an object.
 func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {

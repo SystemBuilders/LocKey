@@ -40,7 +40,7 @@ func TestLockService(t *testing.T) {
 
 		d := lockservice.NewLockDescriptor("test", "owner")
 
-		got := sc.acquire(d)
+		got := sc.Acquire(d)
 		var want error
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
@@ -48,7 +48,7 @@ func TestLockService(t *testing.T) {
 
 		d = lockservice.NewLockDescriptor("test1", "owner")
 
-		got = sc.acquire(d)
+		got = sc.Acquire(d)
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
@@ -77,13 +77,13 @@ func TestLockService(t *testing.T) {
 
 		d := lockservice.NewLockDescriptor("test", "owner")
 
-		got := sc.acquire(d)
+		got := sc.Acquire(d)
 		var want error
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		got = sc.acquire(d)
+		got = sc.Acquire(d)
 		want = lockservice.ErrFileacquired
 		if got.Error() != want.Error() {
 			t.Errorf("acquire: got %q want %q", got, want)
@@ -104,7 +104,7 @@ func TestLockService(t *testing.T) {
 		sc := NewSimpleClient(scfg, cache)
 
 		d := lockservice.NewLockDescriptor("test", "owner1")
-		got := sc.acquire(d)
+		got := sc.Acquire(d)
 		var want error
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)
@@ -118,7 +118,7 @@ func TestLockService(t *testing.T) {
 		}
 
 		d = lockservice.NewLockDescriptor("test2", "owner1")
-		got = sc.acquire(d)
+		got = sc.Acquire(d)
 		want = nil
 		if got != want {
 			t.Errorf("acquire: got %q want %q", got, want)

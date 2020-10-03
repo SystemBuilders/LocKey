@@ -69,5 +69,5 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		w.Write(byteData)
 		return
 	}
-	http.Error(w, lockservice.ErrCheckacquireFailure.Error(), http.StatusInternalServerError)
+	http.Error(w, lockservice.ErrCheckAcquireFailure.Error(), http.StatusInternalServerError)
 }

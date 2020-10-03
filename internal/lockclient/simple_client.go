@@ -22,7 +22,7 @@ type SimpleClient struct {
 	mu     sync.Mutex
 }
 
-// NewSimpleClient returns a new SimpleKey of the given value.
+// NewSimpleClient returns a new SimpleClient of the given parameters.
 // This client works with or without the existance of a cache.
 func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *SimpleClient {
 	return &SimpleClient{
@@ -49,8 +49,10 @@ func (sc *SimpleClient) acquire(d lockservice.Descriptors) error {
 	// if the element is in the cache.
 	if sc.cache != nil {
 		_, err := sc.getFromCache(lockservice.ObjectDescriptor{ObjectID: d.ID()})
-		// Since there can be network errors, we have this double check.
-		if err != nil && err != lockservice.ErrCheckacquireFailure {
+		// Since there can be cache errors, we have this double check.
+		// We need to exit if a cache doesn't exist but proceed if the cache
+		// failed in persisting this element.
+		if err != nil && err != lockservice.ErrCheckAcquireFailure {
 			return err
 		}
 	}
@@ -88,7 +90,7 @@ func (sc *SimpleClient) acquire(d lockservice.Descriptors) error {
 	return nil
 }
 
-// Release makes an HTTP call to the lockserver and acquires the lock.
+// Release makes an HTTP call to the lockserver and releases the lock.
 // The errors invloved may be due the HTTP errors or the lockservice errors.
 func (sc *SimpleClient) Release(d lockservice.Descriptors) error {
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
@@ -134,18 +136,14 @@ func (sc *SimpleClient) StartService(cfg Config) error {
 	panic("TODO")
 }
 
-// Checkacquire checks for acquisition of lock and returns the owner if the lock
+// CheckAcquire checks for acquisition of lock and returns the owner if the lock
 // is already acquired.
 // The errors returned can be due to HTTP errors or marshalling errors.
 // A "file is not acquired" error is returned if so and no error and an owner is
 // returned if the object is acquired.
-func (sc *SimpleClient) Checkacquire(d lockservice.ObjectDescriptor) (string, error) {
+func (sc *SimpleClient) CheckAcquire(d lockservice.ObjectDescriptor) (string, error) {
 	if sc.cache != nil {
-		owner, err := sc.getFromCache(d)
-		if err != nil {
-			return "", err
-		}
-		return owner, nil
+		return sc.getFromCache(d)
 	}
 
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkacquire"
@@ -193,7 +191,7 @@ func (sc *SimpleClient) getFromCache(d lockservice.ObjectDescriptor) (string, er
 	if sc.cache != nil {
 		owner, err := sc.cache.GetElement(cache.NewSimpleKey(d.ObjectID, ""))
 		if err != nil {
-			return "", lockservice.ErrCheckacquireFailure
+			return "", lockservice.ErrCheckAcquireFailure
 		}
 		return owner, nil
 	}

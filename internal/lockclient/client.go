@@ -34,18 +34,3 @@ type Config interface {
 	// Port provides the port where the server is supposed to run.
 	Port() string
 }
-
-// State describes the state of a lock.
-type State int
-
-// These are the states of a lock.
-const (
-	acquire State = iota
-	Release
-)
-
-// Lock includes the state of the lock and the owner.
-type Lock struct {
-	Owner     string
-	LockState State
-}

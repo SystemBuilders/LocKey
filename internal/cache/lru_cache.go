@@ -95,6 +95,8 @@ func (lru *LRUCache) GetElement(element interface{}) (string, error) {
 func (lru *LRUCache) PutElement(element interface{}) error {
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
+	// Check whether the cache is full. If it's not full, a simple
+	// append follows.
 	if !lru.full {
 		if lru.dll.Head == nil {
 			lru.dll.InsertNodeToRight(lru.dll.Head, element.(*SimpleKey))
@@ -116,6 +118,8 @@ func (lru *LRUCache) PutElement(element interface{}) error {
 			lru.full = true
 		}
 	} else {
+		// If the cache is full, the LRU element is removed and then the
+		// new element will be added to the cache.
 		lru.dll.InsertNodeToLeft(lru.dll.Head, element.(*SimpleKey))
 		err := lru.insertElementIntoMap(*&element.(*SimpleKey).Value, lru.dll.Head)
 		if err != nil {
