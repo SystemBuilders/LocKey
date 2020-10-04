@@ -8,8 +8,7 @@ import (
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
-// type Request = lockservice.Request
-
+// acquire wraps the lock Acquire function and creates a clean HTTP service.
 func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockService) {
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -26,7 +25,7 @@ func acquire(w http.ResponseWriter, r *http.Request, ls *lockservice.SimpleLockS
 		return
 	}
 
-	desc := &lockservice.SimpleDescriptor{
+	desc := &lockservice.LockDescriptor{
 		FileID: req.FileID,
 		UserID: req.UserID,
 	}
@@ -48,7 +47,7 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
-	var req lockservice.LockRequest
+	var req lockservice.LockCheckRequest
 	err = json.Unmarshal(body, &req)
 
 	if err != nil {
@@ -56,13 +55,19 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 		return
 	}
 
-	desc := &lockservice.SimpleDescriptor{
+	desc := &lockservice.LockDescriptor{
 		FileID: req.FileID,
-		UserID: req.UserID,
 	}
-	if ls.CheckAcquired(desc) {
-		w.Write([]byte("checkAcquire success"))
+
+	owner, ok := ls.CheckAcquired(desc)
+	if ok {
+		byteData, err := json.Marshal(lockservice.CheckAcquireRes{Owner: owner})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Write(byteData)
 		return
 	}
-	w.Write([]byte("checkAcquire failure"))
+	http.Error(w, lockservice.ErrCheckAcquireFailure.Error(), http.StatusInternalServerError)
 }

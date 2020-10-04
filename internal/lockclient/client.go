@@ -4,7 +4,13 @@ import "github.com/SystemBuilders/LocKey/internal/lockservice"
 
 // Client describes a client that can be used to interact with
 // the Lockey lockservice. The client can start the lockservice
-// and interact acquire and release locks by making calls to it.
+// and interact by making calls to it.
+//
+// The client has the ability to start the lockservice from its
+// in-built function or it can be started separately.
+//
+// The client allows the user to Acquire a lock and Release a lock,
+// using it's descriptor.
 type Client interface {
 	// StartService starts the lockservice Lockey using the given
 	// configuration. It provides an appropriate error on failing

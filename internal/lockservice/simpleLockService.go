@@ -18,11 +18,23 @@ type SimpleConfig struct {
 	PortAddr string
 }
 
+// LockRequest is an instance of a request for a lock.
 type LockRequest struct {
 	FileID string `json:"FileID"`
 	UserID string `json:"UserID"`
 }
 
+// LockCheckRequest is an instance of a lock check request.
+type LockCheckRequest struct {
+	FileID string `json:"FileID"`
+}
+
+// CheckAcquireRes is the response of a Checkacquire.
+type CheckAcquireRes struct {
+	Owner string `json:"owner"`
+}
+
+// IP returns the IP from the SimpleConfig.
 func (scfg *SimpleConfig) IP() string {
 	return scfg.IPAddr
 }
@@ -42,27 +54,34 @@ type SimpleLockService struct {
 	lockMap *SafeLockMap
 }
 
-var _ Descriptors = (*SimpleDescriptor)(nil)
+var _ Descriptors = (*LockDescriptor)(nil)
 
-// SimpleDescriptor implements the Descriptors interface.
+// ObjectDescriptor describes the object that is subjected to
+// lock operations.
+type ObjectDescriptor struct {
+	ObjectID string
+}
+
+// LockDescriptor implements the Descriptors interface.
 // Many descriptors can be added to this struct and the ID
 // can be a combination of all those descriptors.
-type SimpleDescriptor struct {
+type LockDescriptor struct {
 	FileID string
 	UserID string
 }
 
 // ID represents the distinguishable ID of the descriptor.
-func (sd *SimpleDescriptor) ID() string {
+func (sd *LockDescriptor) ID() string {
 	return sd.FileID
 }
 
 // Owner represents the distinguishable ID of the entity that
 // holds the lock for FileID.
-func (sd *SimpleDescriptor) Owner() string {
+func (sd *LockDescriptor) Owner() string {
 	return sd.UserID
 }
 
+// NewSimpleConfig returns an instance of the SimpleConfig.
 func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	return &SimpleConfig{
 		IPAddr:   IPAddr,
@@ -70,10 +89,18 @@ func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	}
 }
 
-func NewSimpleDescriptor(FileID, UserID string) *SimpleDescriptor {
-	return &SimpleDescriptor{
+// NewLockDescriptor returns an instance of the LockDescriptor.
+func NewLockDescriptor(FileID, UserID string) *LockDescriptor {
+	return &LockDescriptor{
 		FileID: FileID,
 		UserID: UserID,
+	}
+}
+
+// NewObjectDescriptor returns an instance of the ObjectDescriptor.
+func NewObjectDescriptor(ObjectID string) *ObjectDescriptor {
+	return &ObjectDescriptor{
+		ObjectID: ObjectID,
 	}
 }
 
@@ -98,7 +125,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 			Debug().
 			Str("descriptor", sd.ID()).
 			Msg("can't acquire, already been acquired")
-		return ErrFileAcquired
+		return ErrFileacquired
 	}
 	ls.lockMap.LockMap[sd.ID()] = sd.Owner()
 	ls.lockMap.Mutex.Unlock()
@@ -106,6 +133,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 		log.
 		Debug().
 		Str("descriptor", sd.ID()).
+		Str("owner", sd.Owner()).
 		Msg("locked")
 	return nil
 }
@@ -121,6 +149,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			log.
 			Debug().
 			Str("descriptor", sd.ID()).
+			Str("owner", sd.Owner()).
 			Msg("released")
 		ls.lockMap.Mutex.Unlock()
 		return nil
@@ -146,44 +175,47 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 
 }
 
-// CheckAcquired returns true if the file is acquired
-func (ls *SimpleLockService) CheckAcquired(sd Descriptors) bool {
+// CheckAcquired returns true if the file is Acquired.
+// It also returns the owner of the file.
+func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 	ls.lockMap.Mutex.Lock()
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
+	id := sd.ID()
+	if owner, ok := ls.lockMap.LockMap[id]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
-			Str("descriptor", sd.ID()).
-			Msg("checkAcquire success")
-		return true
+			Str("descriptor", id).
+			Msg("checkacquire success")
+		return owner, true
 	}
 	ls.
 		log.
 		Debug().
-		Str("descriptor", sd.ID()).
-		Msg("check Acquire failure")
+		Str("descriptor", id).
+		Msg("check acquire failure")
 	ls.lockMap.Mutex.Unlock()
-	return false
+	return "", false
 }
 
 // CheckReleased returns true if the file is released
 func (ls *SimpleLockService) CheckReleased(sd Descriptors) bool {
 	ls.lockMap.Mutex.Lock()
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
+	id := sd.ID()
+	if _, ok := ls.lockMap.LockMap[id]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
-			Str("descriptor", sd.ID()).
+			Str("descriptor", id).
 			Msg("checkRelease failure")
 		return false
 	}
+	ls.lockMap.Mutex.Unlock()
 	ls.
 		log.
 		Debug().
-		Str("descriptor", sd.ID()).
+		Str("descriptor", id).
 		Msg("checkRelease success")
-	ls.lockMap.Mutex.Unlock()
 	return true
 }

@@ -5,13 +5,13 @@ import "testing"
 func Test_LRUCache(t *testing.T) {
 	lruCache := NewLRUCache(5)
 
-	one := NewSimpleKey("1")
-	two := NewSimpleKey("2")
-	three := NewSimpleKey("3")
-	four := NewSimpleKey("4")
-	one_1 := NewSimpleKey("1")
-	five := NewSimpleKey("5")
-	six := NewSimpleKey("6")
+	one := NewSimpleKey("1", "owner1")
+	two := NewSimpleKey("2", "owner1")
+	three := NewSimpleKey("3", "owner1")
+	four := NewSimpleKey("4", "owner1")
+	oneOne := NewSimpleKey("1", "owner1")
+	five := NewSimpleKey("5", "owner1")
+	six := NewSimpleKey("6", "owner1")
 
 	err := lruCache.PutElement(one)
 	if err != nil {
@@ -25,7 +25,7 @@ func Test_LRUCache(t *testing.T) {
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.GetElement(one)
+	_, err = lruCache.GetElement(one)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func Test_LRUCache(t *testing.T) {
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.GetElement(two)
+	_, err = lruCache.GetElement(two)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,25 +49,25 @@ func Test_LRUCache(t *testing.T) {
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.GetElement(one)
+	_, err = lruCache.GetElement(one)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.GetElement(three)
+	_, err = lruCache.GetElement(three)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.GetElement(four)
+	_, err = lruCache.GetElement(four)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lruCache.PrintCache()
 
-	err = lruCache.RemoveElement(one_1)
+	err = lruCache.RemoveElement(oneOne)
 	if err != nil {
 		t.Fatal(err)
 	}
