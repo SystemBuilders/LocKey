@@ -146,7 +146,7 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.ObjectDescriptor) (string, er
 		return sc.getFromCache(d)
 	}
 
-	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkacquire"
+	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/checkAcquire"
 	data := lockservice.LockCheckRequest{FileID: d.ObjectID}
 	requestJSON, err := json.Marshal(data)
 	if err != nil {
@@ -175,7 +175,7 @@ func (sc *SimpleClient) CheckAcquire(d lockservice.ObjectDescriptor) (string, er
 		return "", lockservice.Error(strings.TrimSpace(string(body)))
 	}
 
-	var ownerData lockservice.CheckacquireRes
+	var ownerData lockservice.CheckAcquireRes
 	err = json.Unmarshal(body, &ownerData)
 	if err != nil {
 		return "", err

@@ -61,7 +61,7 @@ func checkAcquired(w http.ResponseWriter, r *http.Request, ls *lockservice.Simpl
 
 	owner, ok := ls.CheckAcquired(desc)
 	if ok {
-		byteData, err := json.Marshal(lockservice.CheckacquireRes{Owner: owner})
+		byteData, err := json.Marshal(lockservice.CheckAcquireRes{Owner: owner})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

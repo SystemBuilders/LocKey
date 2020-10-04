@@ -29,8 +29,8 @@ type LockCheckRequest struct {
 	FileID string `json:"FileID"`
 }
 
-// CheckacquireRes is the response of a Checkacquire.
-type CheckacquireRes struct {
+// CheckAcquireRes is the response of a Checkacquire.
+type CheckAcquireRes struct {
 	Owner string `json:"owner"`
 }
 

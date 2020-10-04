@@ -10,7 +10,7 @@ import (
 // SetupRouting adds all the routes on the http server.
 func SetupRouting(ls *lockservice.SimpleLockService, r *mux.Router) *mux.Router {
 	r.HandleFunc("/acquire", makeacquireHandler(ls)).Methods(http.MethodPost)
-	r.HandleFunc("/checkacquire", makecheckAcquiredHandler(ls)).Methods(http.MethodPost)
+	r.HandleFunc("/checkAcquire", makecheckAcquiredHandler(ls)).Methods(http.MethodPost)
 	r.HandleFunc("/release", makereleaseHandler(ls)).Methods(http.MethodPost)
 	r.HandleFunc("/checkRelease", makecheckReleaseHandler(ls)).Methods(http.MethodPost)
 	return r
