@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/SystemBuilders/LocKey/internal/cache"
+	"github.com/SystemBuilders/LocKey/internal/lockclient/session"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
+	"github.com/oklog/ulid"
 )
 
 var _ Config = (*lockservice.SimpleConfig)(nil)
@@ -20,6 +24,7 @@ type SimpleClient struct {
 	config *lockservice.SimpleConfig
 	cache  *cache.LRUCache
 	mu     sync.Mutex
+	id     ulid.ULID
 }
 
 // NewSimpleClient returns a new SimpleClient of the given parameters.
@@ -32,6 +37,16 @@ func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *S
 }
 
 var _ Client = (*SimpleClient)(nil)
+
+// Connect lets the user process to establish a connection with the
+// client.
+func (sc *SimpleClient) Connect() session.Session {
+	sessionID := createUniqueID()
+	processID := createUniqueID()
+	session := session.NewSession(sessionID, sc.id, processID)
+
+	return session
+}
 
 // Acquire allows the user process to acquire a lock.
 func (sc *SimpleClient) Acquire(d lockservice.Descriptors) error {
@@ -218,4 +233,10 @@ func (sc *SimpleClient) releaseFromCache(d lockservice.Descriptors) error {
 		return nil
 	}
 	return cache.ErrCacheDoesntExist
+}
+
+func createUniqueID() ulid.ULID {
+	t := time.Unix(1000000, 0)
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	return ulid.MustNew(ulid.Timestamp(t), entropy)
 }

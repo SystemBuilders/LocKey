@@ -20,13 +20,13 @@ type SimpleConfig struct {
 
 // LockRequest is an instance of a request for a lock.
 type LockRequest struct {
-	FileID string `json:"FileID"`
-	UserID string `json:"UserID"`
+	FileID string `json:"fileID"`
+	UserID string `json:"userID"`
 }
 
 // LockCheckRequest is an instance of a lock check request.
 type LockCheckRequest struct {
-	FileID string `json:"FileID"`
+	FileID string `json:"fileID"`
 }
 
 // CheckAcquireRes is the response of a Checkacquire.
