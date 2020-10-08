@@ -22,12 +22,20 @@ var _ Config = (*lockservice.SimpleConfig)(nil)
 
 // SimpleClient implements Client, the lockclient for LocKey.
 type SimpleClient struct {
-	config        *lockservice.SimpleConfig
-	cache         *cache.LRUCache
-	mu            sync.Mutex
-	id            ulid.ULID
-	sessions      map[ulid.ULID]session.Session
+	config *lockservice.SimpleConfig
+	cache  *cache.LRUCache
+	mu     sync.Mutex
+	id     ulid.ULID
+
+	// sessions holds the mapping of a process to a session.
+	sessions map[ulid.ULID]session.Session
+	// sessionTimers maintains the timers for each session,
 	sessionTimers map[ulid.ULID]chan struct{}
+	// sessionAcquisitions has a list of all the acquisitions
+	// from a particular process. This has no knowledge of
+	// whether the process owning the lock has an active session
+	// or not, this guarantee has to be ensured by the client.
+	sessionAcquisitions map[ulid.ULID][]lockservice.Descriptors
 }
 
 // NewSimpleClient returns a new SimpleClient of the given parameters.
@@ -80,7 +88,15 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors, s session.Session) er
 			}
 		}
 	}()
-	return sc.acquire(ctx, d)
+	err := sc.acquire(ctx, d)
+	if err != nil {
+		return err
+	}
+	// Once the lock is guaranteed to be acquired, append it to the acquisitions list.
+	sc.mu.Lock()
+	sc.sessionAcquisitions[s.ProcessID()] = append(sc.sessionAcquisitions[s.ProcessID()], d)
+	sc.mu.Unlock()
+	return nil
 }
 
 // acquire makes an HTTP call to the lockserver and acquires the lock.
@@ -89,19 +105,21 @@ func (sc *SimpleClient) Acquire(d lockservice.Descriptors, s session.Session) er
 // The errors involved may be due the HTTP, cache or the lockservice errors.
 //
 // This function doesn't care about sessions or ordering of the user processes and
-// thus can be used for book-keeping purposes.
+// thus can be used for book-keeping purposes using a nil context.
 func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) (err error) {
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				err = SessionExpired
-				return
-			default:
+	if ctx != nil {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					err = SessionExpired
+					return
+				default:
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	// Check for existance of a cache and check
 	// if the element is in the cache.
@@ -154,8 +172,29 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 // Only if there is an active session by the user process, it can release the locks
 // once verified that the locks belong to the user process.
 func (sc *SimpleClient) Release(d lockservice.Descriptors, s session.Session) error {
+	if _, ok := sc.sessions[s.ProcessID()]; !ok {
+		return ErrSessionInexistent
+	}
 	ctx := context.Background()
-	return sc.release(ctx, d)
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		for {
+			select {
+			case <-sc.sessionTimers[s.ProcessID()]:
+				cancel()
+				sc.gracefulSessionShutDown(s.ProcessID())
+			default:
+			}
+		}
+	}()
+
+	err := sc.release(ctx, d)
+	if err != nil {
+		return err
+	}
+	// Remove the descriptor that was released.
+	sc.removeFromSlice(s.ProcessID(), d)
+	return nil
 }
 
 // release makes a HTTP call to the lock service and releases the lock.
@@ -164,8 +203,23 @@ func (sc *SimpleClient) Release(d lockservice.Descriptors, s session.Session) er
 // The errors involved maybe the HTTP, cache or the lockservice errors.
 //
 // This function doesn't care about sessions or ordering of the user processes and
-// thus can be used for book-keeping purposes.
-func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) error {
+// thus can be used for book-keeping purposes using a nil context.
+// TODO: Cache invalidation
+func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) (err error) {
+
+	if ctx != nil {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					err = SessionExpired
+					return
+				default:
+				}
+			}
+		}()
+	}
+
 	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 	data := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
 	requestJSON, err := json.Marshal(data)
@@ -304,14 +358,29 @@ func (sc *SimpleClient) startSession(processID ulid.ULID) {
 	go func(ulid.ULID) {
 		timerChan := make(chan struct{}, 1)
 		sc.sessionTimers[processID] = timerChan
+		// Sessions last for 200ms.
 		time.Sleep(200 * time.Millisecond)
 		sc.sessionTimers[processID] <- struct{}{}
 		close(sc.sessionTimers[processID])
 	}(processID)
 }
 
+// gracefulSessionShutdown releases all the locks in the lockservice once the
+// session has ended.
 func (sc *SimpleClient) gracefulSessionShutDown(processID ulid.ULID) {
+	for i := range sc.sessionAcquisitions[processID] {
+		sc.release(nil, sc.sessionAcquisitions[processID][i])
+	}
+}
 
+func (sc *SimpleClient) removeFromSlice(processID ulid.ULID, d lockservice.Descriptors) {
+	sc.mu.Lock()
+	for i := range sc.sessionAcquisitions[processID] {
+		if sc.sessionAcquisitions[processID][i] == d {
+			sc.sessionAcquisitions[processID] = append(sc.sessionAcquisitions[processID][:i], sc.sessionAcquisitions[processID][i+1:]...)
+		}
+	}
+	sc.mu.Unlock()
 }
 
 func createUniqueID() ulid.ULID {
