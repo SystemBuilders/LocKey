@@ -2,7 +2,8 @@
 
 We like to describe LocKey as a software that can be individually deployed and used as a distributed lock service. It is made of the following major components, the client and the service.
 
-## Lock Client
+## Components
+### Lock Client
 The lock client is a library that enables the user to completely setup a lock service on a desired domain and use it. The client looks like this:
 ```
 type Client interface {
@@ -16,7 +17,7 @@ type Client interface {
 Any implementation of a client should involve the above function implementations to display its features.
 
 
-## Lock Service
+### Lock Service
 
 This is the core of LocKey that maintains the locks. This can be deployed in a distributed manner and the client can adopt to this based on some configuration changes.
 The service looks like this:
@@ -28,4 +29,7 @@ type LockService interface {
   CheckReleased(descriptors) error
 }
 ```
+## High Level Design
+
+
 
