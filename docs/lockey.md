@@ -31,5 +31,7 @@ type LockService interface {
 ```
 ## High Level Design
 
+Following is a high level design of the system:
 
+![LocKey](https://github.com/SystemBuilders/LocKey/blob/master/LocKey.png?raw=true)
 
