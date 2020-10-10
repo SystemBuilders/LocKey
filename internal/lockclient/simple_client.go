@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SystemBuilders/LocKey/internal/cache"
+	"github.com/SystemBuilders/LocKey/internal/lockclient/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockclient/session"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 	"github.com/oklog/ulid"

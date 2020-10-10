@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
-	"github.com/SystemBuilders/LocKey/internal/routing"
+	"github.com/SystemBuilders/LocKey/internal/lockservice/routing"
 	"github.com/gorilla/mux"
 )
 

@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
-	"github.com/SystemBuilders/LocKey/internal/node"
+	"github.com/SystemBuilders/LocKey/internal/lockservice/node"
 	"github.com/rs/zerolog"
 )
 
