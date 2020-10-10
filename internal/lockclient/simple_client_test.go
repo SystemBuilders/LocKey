@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SystemBuilders/LocKey/internal/cache"
+	"github.com/SystemBuilders/LocKey/internal/lockclient/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
-	"github.com/SystemBuilders/LocKey/internal/node"
+	"github.com/SystemBuilders/LocKey/internal/lockservice/node"
 
 	"github.com/rs/zerolog"
 )
