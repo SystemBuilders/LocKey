@@ -19,7 +19,7 @@ If a cache exists in the client, the HTTP call can be saved. On a user process c
   
 ### Function description
 
-```
+```go
 func Acquire(lock_descriptor) error {
   // check whether a cache exists in a client.
   if cache!=nil {
@@ -39,7 +39,7 @@ If a cache exists in an LC, the release must handle cache invalidations when the
 
 ### Function description
 
-```
+```go
 func Release(lock_descriptor) error {
   // check whether a cache exists in the client.
   if cache!=nil {
