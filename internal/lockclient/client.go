@@ -27,11 +27,11 @@ type Client interface {
 	// Acquire can be used to acquire a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.
-	Acquire(lockservice.Descriptors, session.Session) error
+	Acquire(lockservice.Object, session.Session) error
 	// Release can be used to release a lock on Lockey. This
 	// implementation interacts with the underlying server and
 	// provides the service.
-	Release(lockservice.Descriptors, session.Session) error
+	Release(lockservice.Object, session.Session) error
 }
 
 // Config describes the configuration for the lockservice to run on.

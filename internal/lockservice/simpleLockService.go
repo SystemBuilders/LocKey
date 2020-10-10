@@ -55,11 +55,17 @@ type SimpleLockService struct {
 }
 
 var _ Descriptors = (*LockDescriptor)(nil)
+var _ Object = (*ObjectDescriptor)(nil)
 
 // ObjectDescriptor describes the object that is subjected to
 // lock operations.
 type ObjectDescriptor struct {
 	ObjectID string
+}
+
+// ID returns the ID related to the object.
+func (od *ObjectDescriptor) ID() string {
+	return od.ObjectID
 }
 
 // LockDescriptor implements the Descriptors interface.
