@@ -5,7 +5,7 @@ We like to describe LocKey as a software that can be individually deployed and u
 ## Components
 ### Lock Client
 The lock client is a library that enables the user to completely setup a lock service on a desired domain and use it. The client looks like this:
-```
+```go
 type Client interface {
   StartService() error
   Connect() session.Session
@@ -21,7 +21,7 @@ Any implementation of a client should involve the above function implementations
 
 This is the core of LocKey that maintains the locks. This can be deployed in a distributed manner and the client can adopt to this based on some configuration changes.
 The service looks like this:
-```
+```go
 type LockService interface {
   Acquire(descriptors) error
   Release(descriptors) error
