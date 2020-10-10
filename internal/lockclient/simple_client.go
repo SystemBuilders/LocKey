@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SystemBuilders/LocKey/internal/cache"
+	"github.com/SystemBuilders/LocKey/internal/lockclient/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockservice"
 )
 
