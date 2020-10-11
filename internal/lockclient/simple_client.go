@@ -111,69 +111,94 @@ func (sc *SimpleClient) Acquire(d lockservice.Object, s session.Session) error {
 //
 // This function doesn't care about sessions or ordering of the user processes and
 // thus can be used for book-keeping purposes using a nil context.
-func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) (err error) {
+func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) error {
 
+	errChan := make(chan error, 1)
 	if ctx != nil {
 		go func() {
 			for {
 				select {
 				case <-ctx.Done():
-					err = SessionExpired
-					return
+					errChan <- SessionExpired
 				default:
 				}
 			}
 		}()
 	}
 
-	// Check for existance of a cache and check
-	// if the element is in the cache.
-	if sc.cache != nil {
-		_, err := sc.getFromCache(lockservice.ObjectDescriptor{ObjectID: d.ID()})
-		// Since there can be cache errors, we have this double check.
-		// We need to exit if a cache doesn't exist but proceed if the cache
-		// failed in persisting this element.
-		if err != nil && err != lockservice.ErrCheckAcquireFailure {
-			return err
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		// Check for existance of a cache and check
+		// if the element is in the cache.
+		if sc.cache != nil {
+			_, err := sc.getFromCache(lockservice.ObjectDescriptor{ObjectID: d.ID()})
+			// Since there can be cache errors, we have this double check.
+			// We need to exit if a cache doesn't exist but proceed if the cache
+			// failed in persisting this element.
+			if err != nil && err != lockservice.ErrCheckAcquireFailure {
+				errChan <- err
+				wg.Done()
+				return
+			}
 		}
-	}
 
-	endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
-	// Since the cache doesn't have the element, query the server.
-	testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
-	requestJSON, ok := json.Marshal(testData)
-	if ok != nil {
-		return ok
-	}
-
-	req, ok := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
-	if ok != nil {
-		return ok
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, ok := client.Do(req)
-	if ok != nil {
-		return ok
-	}
-	defer resp.Body.Close()
-
-	body, ok := ioutil.ReadAll(resp.Body)
-	if ok != nil {
-		return ok
-	}
-	if resp.StatusCode != 200 {
-		return errors.New(strings.TrimSpace(string(body)))
-	}
-
-	if sc.cache != nil {
-		err := sc.addToCache(d)
+		endPoint := sc.config.IP() + ":" + sc.config.Port() + "/acquire"
+		// Since the cache doesn't have the element, query the server.
+		testData := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
+		requestJSON, err := json.Marshal(testData)
 		if err != nil {
-			return err
+			errChan <- err
+			wg.Done()
+			return
 		}
-	}
-	return nil
+
+		req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		if resp.StatusCode != 200 {
+			errChan <- errors.New(strings.TrimSpace(string(body)))
+			wg.Done()
+			return
+		}
+
+		if sc.cache != nil {
+			err := sc.addToCache(d)
+			if err != nil {
+				errChan <- err
+				wg.Done()
+				return
+			}
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Wait()
+		errChan <- nil
+	}()
+
+	return <-errChan
 }
 
 // Release makes an HTTP call to the lockserver and releases the lock.
@@ -219,54 +244,75 @@ func (sc *SimpleClient) Release(d lockservice.Object, s session.Session) error {
 // TODO: Cache invalidation
 func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) (err error) {
 
+	errChan := make(chan error, 1)
 	if ctx != nil {
 		go func() {
 			for {
 				select {
 				case <-ctx.Done():
-					err = SessionExpired
-					return
+					errChan <- SessionExpired
 				default:
 				}
 			}
 		}()
 	}
 
-	endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
-	data := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
-	requestJSON, ok := json.Marshal(data)
-	if ok != nil {
-		return ok
-	}
-
-	req, ok := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
-	if ok != nil {
-		return ok
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, ok := client.Do(req)
-	if ok != nil {
-		return ok
-	}
-	defer resp.Body.Close()
-
-	body, ok := ioutil.ReadAll(resp.Body)
-	if ok != nil {
-		return ok
-	}
-	if resp.StatusCode != 200 {
-		return lockservice.Error(strings.TrimSpace(string(body)))
-	}
-
-	if sc.cache != nil {
-		err := sc.releaseFromCache(d)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
+		data := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
+		requestJSON, err := json.Marshal(data)
 		if err != nil {
-			return err
+			errChan <- err
+			wg.Done()
+			return
 		}
-	}
-	return nil
+
+		req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			errChan <- err
+			wg.Done()
+			return
+		}
+		if resp.StatusCode != 200 {
+			errChan <- lockservice.Error(strings.TrimSpace(string(body)))
+		}
+
+		if sc.cache != nil {
+			err := sc.releaseFromCache(d)
+			if err != nil {
+				errChan <- err
+				wg.Done()
+				return
+			}
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Wait()
+		errChan <- nil
+	}()
+
+	return <-errChan
 }
 
 // StartService starts the lockservice LocKey.
