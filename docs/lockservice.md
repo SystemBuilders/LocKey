@@ -23,17 +23,26 @@ When a client wishes to acquire a lock, it sends a HTTP request to the lock serv
 ```go
 type LockRequest struct {
 	FileID string `json:"FileID"`
-	UserID string `json:"UserID"`
+	SessionID string `json:"SessionID"`
 }
 ```
-The request contains information of 'what' needs to be acquired and 'who' wishes to acquire it. The server then routes this request to the `Acquire()` method defined in the lock service using a route handler. This method updates the lockmap with the acquisition if the lock is not already acquired. If the method is successful, a response with status code 200 is sent to the client that requested the lock
+The request contains information of 'what' (FileID) needs to be acquired and 'who' (SessionID) wishes to acquire it. The `SessionID` is important because if the object does end up being locked, then the lock service maps the objects to the sessionID that is leasing the lock in `SafeLockMap`. This is to ensure that only the process that acquired the lock has the ability to release it. Since the `SessionID` is unique to each session and is never exposed to a client process, it is unlikely that it can be spoofed. The server then routes this request to the `Acquire()` method defined in the lock service using a route handler. This method updates the lockmap with the acquisition if the lock is not already acquired. If the method is successful, a response with status code 200 is sent to the client that requested the lock
 
 ## Check Acquire
-
+TODO
 
 ## Release
+Either when a client wishes to release its lock or a session of a client expires, `Release()` is called for all corresponding locks. As in the case of `Acquire()`, a marshaled JSON of the `LockRequest` struct is sent to the lock server via HTTP to the `/release` endpoint. This struct would contain information of both the `object` that has to be released and the `sessionID`. The `sessionID` is important because it is used to ensure that only the process that requested the lock can release it. The condition for checking sessionID before performing a release would be: 
+```go
+if request.sessionID == SafeLockMap.LockMap[object] {
+	//release
+}
+```
+If the release condition is met, the `object:sessionID` mapping is deleted from the `SafeLockMap`
 
 ## Check Release
+
+Is this needed?
 
 ## Lock Leasing (Expiry)
 We implement a 'lazy' approach to determine when a lock expires. When acquiring a lock, the service notes the timestamp in a map that mirrors `Lockmap`.
