@@ -9,5 +9,5 @@ func (e Error) Error() string { return string(e) }
 // Rule of thumb, all errors start with a small letter and end with no full stop.
 const (
 	ErrSessionInexistent = Error("the session related to this process doesn't exist")
-	SessionExpired       = Error("session expired")
+	ErrSessionExpired    = Error("session expired")
 )

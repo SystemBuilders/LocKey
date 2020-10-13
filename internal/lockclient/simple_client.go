@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SystemBuilders/LocKey/internal/lockclient/id"
+	"github.com/rs/zerolog"
 
 	"github.com/SystemBuilders/LocKey/internal/lockclient/cache"
 	"github.com/SystemBuilders/LocKey/internal/lockclient/session"
@@ -26,6 +27,7 @@ type SimpleClient struct {
 	cache  *cache.LRUCache
 	mu     sync.Mutex
 	id     id.ID
+	log    zerolog.Logger
 
 	// sessions holds the mapping of a process to a session.
 	sessions map[id.ID]session.Session
@@ -40,7 +42,7 @@ type SimpleClient struct {
 
 // NewSimpleClient returns a new SimpleClient of the given parameters.
 // This client works with or without the existance of a cache.
-func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *SimpleClient {
+func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache *cache.LRUCache) *SimpleClient {
 	clientID := id.Create()
 	sessions := make(map[id.ID]session.Session)
 	sessionTimers := make(map[id.ID]chan struct{})
@@ -49,6 +51,7 @@ func NewSimpleClient(config *lockservice.SimpleConfig, cache *cache.LRUCache) *S
 		config:              config,
 		cache:               cache,
 		id:                  clientID,
+		log:                 log,
 		sessions:            sessions,
 		sessionTimers:       sessionTimers,
 		sessionAcquisitions: sessionAcquisitions,
@@ -65,6 +68,10 @@ func (sc *SimpleClient) Connect() session.Session {
 	session := session.NewSession(sessionID, sc.id, processID)
 	sc.sessions[processID] = session
 	sc.startSession(processID)
+	sc.log.
+		Debug().
+		Str(processID.String(), "connected").
+		Msg("session created")
 	return session
 }
 
@@ -75,21 +82,34 @@ func (sc *SimpleClient) Connect() session.Session {
 // All locks acquired during the session will be revoked if the session
 // expires.
 func (sc *SimpleClient) Acquire(d lockservice.Object, s session.Session) error {
+	sc.mu.Lock()
 	if _, ok := sc.sessions[s.ProcessID()]; !ok {
+		sc.mu.Unlock()
 		return ErrSessionInexistent
 	}
+	sc.mu.Unlock()
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+	close := make(chan struct{}, 1)
 	go func() {
 		for {
 			sc.mu.Lock()
 			select {
 			case <-sc.sessionTimers[s.ProcessID()]:
 				cancel()
+				sc.log.
+					Debug().
+					Str(s.ProcessID().String(), "user process").
+					Msg("session expired, starting graceful shutdown")
+				sc.mu.Unlock()
 				sc.gracefulSessionShutDown(s.ProcessID())
+				return
+			case <-close:
+				sc.mu.Unlock()
+				return
 			default:
+				sc.mu.Unlock()
 			}
-			sc.mu.Unlock()
 		}
 	}()
 	ld := lockservice.NewLockDescriptor(d.ID(), s.ProcessID().String())
@@ -101,6 +121,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Object, s session.Session) error {
 	sc.mu.Lock()
 	sc.sessionAcquisitions[s.ProcessID()] = append(sc.sessionAcquisitions[s.ProcessID()], ld)
 	sc.mu.Unlock()
+	close <- struct{}{}
 	return nil
 }
 
@@ -111,6 +132,9 @@ func (sc *SimpleClient) Acquire(d lockservice.Object, s session.Session) error {
 //
 // This function doesn't care about sessions or ordering of the user processes and
 // thus can be used for book-keeping purposes using a nil context.
+//
+// To avoid a race condition  by returning errors from the goroutine and the
+// acquire functionality, a channel is used to capture the errors.
 func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) error {
 
 	errChan := make(chan error, 1)
@@ -119,7 +143,7 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 			for {
 				select {
 				case <-ctx.Done():
-					errChan <- SessionExpired
+					errChan <- ErrSessionExpired
 				default:
 				}
 			}
@@ -149,14 +173,13 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 		requestJSON, err := json.Marshal(testData)
 		if err != nil {
 			errChan <- err
-			wg.Done()
+			// wg.Done()
 			return
 		}
 
 		req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -165,7 +188,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 		resp, err := client.Do(req)
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		defer resp.Body.Close()
@@ -173,12 +195,10 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		if resp.StatusCode != 200 {
 			errChan <- errors.New(strings.TrimSpace(string(body)))
-			wg.Done()
 			return
 		}
 
@@ -186,7 +206,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 			err := sc.addToCache(d)
 			if err != nil {
 				errChan <- err
-				wg.Done()
 				return
 			}
 		}
@@ -194,6 +213,9 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 	}()
 
 	go func() {
+		// This goroutine waits to check whether the acquire goroutine is
+		// done. Once it returned, a nil is passed to the channel indicating
+		// an error free process.
 		wg.Wait()
 		errChan <- nil
 	}()
@@ -207,21 +229,34 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 // Only if there is an active session by the user process, it can release the locks
 // once verified that the locks belong to the user process.
 func (sc *SimpleClient) Release(d lockservice.Object, s session.Session) error {
+	sc.mu.Lock()
 	if _, ok := sc.sessions[s.ProcessID()]; !ok {
+		sc.mu.Unlock()
 		return ErrSessionInexistent
 	}
+	sc.mu.Unlock()
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+	close := make(chan struct{}, 1)
 	go func() {
 		for {
 			sc.mu.Lock()
 			select {
 			case <-sc.sessionTimers[s.ProcessID()]:
 				cancel()
+				sc.log.
+					Debug().
+					Str(s.ProcessID().String(), "user process").
+					Msg("session expired, starting graceful shutdown")
+				sc.mu.Unlock()
 				sc.gracefulSessionShutDown(s.ProcessID())
+				return
+			case <-close:
+				sc.mu.Unlock()
+				return
 			default:
+				sc.mu.Unlock()
 			}
-			sc.mu.Unlock()
 		}
 	}()
 	ld := lockservice.NewLockDescriptor(d.ID(), s.ProcessID().String())
@@ -231,6 +266,7 @@ func (sc *SimpleClient) Release(d lockservice.Object, s session.Session) error {
 	}
 	// Remove the descriptor that was released.
 	sc.removeFromSlice(s.ProcessID(), ld)
+	close <- struct{}{}
 	return nil
 }
 
@@ -250,7 +286,7 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 			for {
 				select {
 				case <-ctx.Done():
-					errChan <- SessionExpired
+					errChan <- ErrSessionExpired
 				default:
 				}
 			}
@@ -265,14 +301,12 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 		requestJSON, err := json.Marshal(data)
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 
 		req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(requestJSON))
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -281,7 +315,6 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 		resp, err := client.Do(req)
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		defer resp.Body.Close()
@@ -289,18 +322,16 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errChan <- err
-			wg.Done()
 			return
 		}
 		if resp.StatusCode != 200 {
 			errChan <- lockservice.Error(strings.TrimSpace(string(body)))
+			return
 		}
 
 		if sc.cache != nil {
-			err := sc.releaseFromCache(d)
 			if err != nil {
 				errChan <- err
-				wg.Done()
 				return
 			}
 		}
@@ -414,6 +445,9 @@ func (sc *SimpleClient) releaseFromCache(d lockservice.Descriptors) error {
 // object in the map and then ends by closing the channel created.
 func (sc *SimpleClient) startSession(processID id.ID) {
 	go func(id.ID) {
+		sc.log.Debug().
+			Str(processID.String(), "user process").
+			Msg("session timer started")
 		timerChan := make(chan struct{}, 1)
 		sc.mu.Lock()
 		sc.sessionTimers[processID] = timerChan
@@ -424,15 +458,29 @@ func (sc *SimpleClient) startSession(processID id.ID) {
 		sc.sessionTimers[processID] <- struct{}{}
 		sc.mu.Unlock()
 		close(sc.sessionTimers[processID])
+		sc.mu.Lock()
+		delete(sc.sessionTimers, processID)
+		sc.mu.Unlock()
+		sc.log.Debug().
+			Str(processID.String(), "session timed out").
+			Msg("disconnected")
+		sc.gracefulSessionShutDown(processID)
 	}(processID)
 }
 
 // gracefulSessionShutdown releases all the locks in the lockservice once the
 // session has ended.
 func (sc *SimpleClient) gracefulSessionShutDown(processID id.ID) {
-	for i := range sc.sessionAcquisitions[processID] {
-		sc.release(nil, sc.sessionAcquisitions[processID][i])
+	sc.mu.Lock()
+	var sessionAcquisitons = sc.sessionAcquisitions[processID]
+	sc.mu.Unlock()
+	for i := range sessionAcquisitons {
+		sc.release(nil, sessionAcquisitons[i])
 	}
+	sc.mu.Lock()
+	delete(sc.sessions, processID)
+	delete(sc.sessionAcquisitions, processID)
+	sc.mu.Unlock()
 }
 
 func (sc *SimpleClient) removeFromSlice(processID id.ID, d lockservice.Descriptors) {
