@@ -150,8 +150,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 		}()
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
 		// Check for existance of a cache and check
 		// if the element is in the cache.
@@ -207,14 +205,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 				return
 			}
 		}
-		wg.Done()
-	}()
-
-	go func() {
-		// This goroutine waits to check whether the acquire goroutine is
-		// done. Once it returned, a nil is passed to the channel indicating
-		// an error free process.
-		wg.Wait()
 		errChan <- nil
 	}()
 
@@ -285,14 +275,13 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 				select {
 				case <-ctx.Done():
 					errChan <- ErrSessionExpired
+					return
 				default:
 				}
 			}
 		}()
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
 		endPoint := sc.config.IPAddr + ":" + sc.config.PortAddr + "/release"
 		data := lockservice.LockRequest{FileID: d.ID(), UserID: d.Owner()}
@@ -333,11 +322,6 @@ func (sc *SimpleClient) release(ctx context.Context, d lockservice.Descriptors) 
 				return
 			}
 		}
-		wg.Done()
-	}()
-
-	go func() {
-		wg.Wait()
 		errChan <- nil
 	}()
 
