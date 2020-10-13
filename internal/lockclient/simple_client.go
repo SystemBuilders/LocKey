@@ -452,13 +452,13 @@ func (sc *SimpleClient) startSession(processID id.ID) {
 		sc.mu.Unlock()
 		// Sessions last for 200ms.
 		time.Sleep(200 * time.Millisecond)
+
 		sc.mu.Lock()
 		sc.sessionTimers[processID] <- struct{}{}
-		sc.mu.Unlock()
 		close(sc.sessionTimers[processID])
-		sc.mu.Lock()
 		delete(sc.sessionTimers, processID)
 		sc.mu.Unlock()
+
 		sc.log.Debug().
 			Str(processID.String(), "session timed out").
 			Msg("disconnected")
