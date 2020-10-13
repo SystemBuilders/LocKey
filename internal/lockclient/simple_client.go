@@ -162,7 +162,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 			// failed in persisting this element.
 			if err != nil && err != lockservice.ErrCheckAcquireFailure {
 				errChan <- err
-				wg.Done()
 				return
 			}
 		}
@@ -173,7 +172,6 @@ func (sc *SimpleClient) acquire(ctx context.Context, d lockservice.Descriptors) 
 		requestJSON, err := json.Marshal(testData)
 		if err != nil {
 			errChan <- err
-			// wg.Done()
 			return
 		}
 
