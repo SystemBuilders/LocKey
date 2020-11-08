@@ -85,7 +85,7 @@ func (sc *SimpleClient) Acquire(d lockservice.Object, s session.Session) error {
 	sc.mu.Lock()
 	if _, ok := sc.sessions[s.ProcessID()]; !ok {
 		sc.mu.Unlock()
-		return ErrSessionInexistent
+		return ErrSessionNonExistent
 	}
 	sc.mu.Unlock()
 	ctx := context.Background()
