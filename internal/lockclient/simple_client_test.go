@@ -157,7 +157,7 @@ func TestLockService(t *testing.T) {
 		// Wait for the session to expire
 		time.Sleep(500 * time.Millisecond)
 		got = sc.Release(d, session)
-		want = ErrSessionInexistent
+		want = ErrSessionNonExistent
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
 		}
