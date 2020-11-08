@@ -20,13 +20,13 @@ type SimpleConfig struct {
 
 // LockRequest is an instance of a request for a lock.
 type LockRequest struct {
-	FileID string `json:"FileID"`
-	UserID string `json:"UserID"`
+	FileID string `json:"fileID"`
+	UserID string `json:"userID"`
 }
 
 // LockCheckRequest is an instance of a lock check request.
 type LockCheckRequest struct {
-	FileID string `json:"FileID"`
+	FileID string `json:"fileID"`
 }
 
 // CheckAcquireRes is the response of a Checkacquire.
@@ -55,11 +55,17 @@ type SimpleLockService struct {
 }
 
 var _ Descriptors = (*LockDescriptor)(nil)
+var _ Object = (*ObjectDescriptor)(nil)
 
 // ObjectDescriptor describes the object that is subjected to
 // lock operations.
 type ObjectDescriptor struct {
 	ObjectID string
+}
+
+// ID returns the ID related to the object.
+func (od *ObjectDescriptor) ID() string {
+	return od.ObjectID
 }
 
 // LockDescriptor implements the Descriptors interface.

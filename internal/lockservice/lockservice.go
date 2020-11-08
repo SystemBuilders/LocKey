@@ -26,3 +26,8 @@ type Descriptors interface {
 	ID() string
 	Owner() string
 }
+
+// Object describes any object that can be used with the lockservice.
+type Object interface {
+	ID() string
+}
