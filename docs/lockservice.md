@@ -10,12 +10,17 @@ Clients communicate with the lock server via HTTP. `node` contains code for a HT
 ## Low-level implementation
 The lockservice uses the following data structure to keep track of lock acquisitions: 
 ```go
+type LockMapObject struct {
+	owner string
+	timestamp time.Time
+}
+
 type SafeLockMap struct {
-	LockMap map[string]string
+	LockMap map[string]LockMapObject
 	Mutex   sync.Mutex
 }
 ```
-On an `Acquire` or `Release`, the mutex of `SafeLockMap` is locked. The LockMap stores a mapping of the object that is locked to the processID that currently owns that object.
+On an `Acquire` or `Release`, the mutex of `SafeLockMap` is locked. The mutex is locked so that there are no concurrent accesses. The LockMap stores a mapping of the object that is locked to the processID that currently owns that object and the timestamp at which the lock was acquired. This timestamp information is used to determine when a lock has [expired](#lock-leasing-expiry).
 
 ## Acquire
 When a client wishes to acquire a lock, it sends an HTTP request to the lock service (an HTTP server) at the `/acquire` endpoint with a JSON encoded `LockRequest` struct. 
@@ -43,11 +48,7 @@ If the release condition is met, the `object:processID` mapping is deleted from 
 
 
 ## Lock Leasing (Expiry)
-We implement a 'lazy' approach to determine when a lock expires. When acquiring a lock, the service notes the timestamp in a map that mirrors `Lockmap`.
-```go
-TimestampMap map[string]Time
-duration Duration
-```
+We implement a 'lazy' approach to determine when a lock expires. When acquiring a lock, the service notes the timestamp in the timestamp field of 
 It maps the object being locked to the timestamp at which it was locked. When the lockservice is required to verify if an entity posesses a lock or if a new entity wishes to acquire this lock, it can perform the following check:
 
 ```go
