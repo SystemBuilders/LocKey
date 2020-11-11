@@ -9,10 +9,19 @@ import (
 
 // SafeLockMap is the lockserver's data structure
 type SafeLockMap struct {
-	LockMap       map[string]string
+	LockMap       map[string]*LockMapEntry
 	TimestampMap  map[string]time.Time
 	LeaseDuration time.Duration
 	Mutex         sync.Mutex
+}
+
+// LockMapEntry defines the structure for objects placed
+// in the LockMap. It consists of the owner of the lock
+// that is acquired and the timestamp at which the
+// acquisition took place.
+type LockMapEntry struct {
+	owner     string
+	timestamp time.Time
 }
 
 // SimpleConfig implements Config.
@@ -84,6 +93,14 @@ func (sd *LockDescriptor) Owner() string {
 	return sd.UserID
 }
 
+// NewLockMapEntry returns an instance of a LockMapEntry
+func NewLockMapEntry(owner string, timestamp time.Time) *LockMapEntry {
+	return &LockMapEntry{
+		owner:     owner,
+		timestamp: timestamp,
+	}
+}
+
 // NewSimpleConfig returns an instance of the SimpleConfig.
 func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	return &SimpleConfig{
@@ -110,7 +127,7 @@ func NewObjectDescriptor(ObjectID string) *ObjectDescriptor {
 // NewSimpleLockService creates and returns a new lock service ready to use.
 func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
 	safeLockMap := &SafeLockMap{
-		LockMap: make(map[string]string),
+		LockMap: make(map[string]*LockMapEntry),
 	}
 	return &SimpleLockService{
 		log:     log,
@@ -131,7 +148,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	// If the lock is not present in the LockMap or
 	// the lock has expired, then allow the acquisition
 	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || getCurrentDuration(ls.lockMap.TimestampMap[sd.ID()]) > ls.lockMap.LeaseDuration {
-		ls.lockMap.LockMap[sd.ID()] = sd.Owner()
+		ls.lockMap.LockMap[sd.ID()] = NewLockMapEntry(sd.Owner(), time.Now())
 		ls.lockMap.TimestampMap[sd.ID()] = time.Now()
 		ls.lockMap.Mutex.Unlock()
 		ls.
@@ -159,7 +176,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	// Only the entity that posseses the lock for this object
 	// is allowed to release the lock
-	if ls.lockMap.LockMap[sd.ID()] == sd.Owner() {
+	if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
 		delete(ls.lockMap.LockMap, sd.ID())
 		delete(ls.lockMap.TimestampMap, sd.ID())
 		ls.
