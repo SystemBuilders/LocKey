@@ -18,7 +18,7 @@ type SafeLockMap struct {
 On an `Acquire()` or `Release()`, the mutex of `SafeLockMap` is locked. The LockMap stores a mapping of the object that is locked to the sessionID that currently owns that object.
 
 ## Acquire
-When a client wishes to acquire a lock, it sends a HTTP request to the lock server (an HTTP server) at the `/acquire` endpoint with a marshaled JSON of the `LockRequest` struct. 
+When a client wishes to acquire a lock, it sends an HTTP request to the lock service (an HTTP server) at the `/acquire` endpoint with a JSON encoded `LockRequest` struct. 
 
 ```go
 type LockRequest struct {
@@ -57,5 +57,4 @@ if _ ,ok := LockMap[object]; !ok || time.Now() > (TimestampMap[object] + duratio
 ```
 
 If the condition is satisfied, then the lock can be acquired. The if statement first checks if the object has ever been acquired. If not, it need not evaluate the second condition and the new entity can acquire the lock directly. However, if it has been acquired some time in the past and is present in the LockMap, then an additional check is performed using the timestamp that was recorded when the lock was acquired.  
-
 
