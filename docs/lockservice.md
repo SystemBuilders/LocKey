@@ -15,7 +15,7 @@ type SafeLockMap struct {
 	Mutex   sync.Mutex
 }
 ```
-On an `Acquire()` or `Release()`, the mutex of `SafeLockMap` is locked. The LockMap stores a mapping of the object that is locked to the sessionID that currently owns that object.
+On an `Acquire` or `Release`, the mutex of `SafeLockMap` is locked. The LockMap stores a mapping of the object that is locked to the processID that currently owns that object.
 
 ## Acquire
 When a client wishes to acquire a lock, it sends a HTTP request to the lock server (an HTTP server) at the `/acquire` endpoint with a marshaled JSON of the `LockRequest` struct. 
@@ -23,26 +23,24 @@ When a client wishes to acquire a lock, it sends a HTTP request to the lock serv
 ```go
 type LockRequest struct {
 	FileID string `json:"FileID"`
-	SessionID string `json:"SessionID"`
+	ProcessID string `json:"ProcessID"`
 }
 ```
-The request contains information of 'what' (FileID) needs to be acquired and 'who' (SessionID) wishes to acquire it. The `SessionID` is important because if the object does end up being locked, then the lock service maps the objects to the sessionID that is leasing the lock in `SafeLockMap`. This is to ensure that only the process that acquired the lock has the ability to release it. Since the `SessionID` is unique to each session and is never exposed to a client process, it is unlikely that it can be spoofed. The server then routes this request to the `Acquire()` method defined in the lock service using a route handler. This method updates the lockmap with the acquisition if the lock is not already acquired. If the method is successful, a response with status code 200 is sent to the client that requested the lock
+The request contains information of 'what' (FileID) needs to be acquired and 'who' (ProcessID) wishes to acquire it. The `ProcessID` is important because if the object does end up being locked, then the lock service maps the objects to the processID that is leasing the lock in `SafeLockMap`. This is to ensure that only the process that acquired the lock has the ability to release it. Since the `ProcessID` is unique to each session and is never exposed to a client process, it is unlikely that it can be spoofed. The server then routes this request to the `Acquire` method defined in the lock service using a route handler. This method updates the lockmap with the acquisition if the lock is not already acquired. If the method is successful, a response with status code 200 is sent to the client that requested the lock
 
-## Check Acquire
-TODO
+## Check Status
+Returns the status of a lock: If it is acquired, or it is available for a client to acquire. 
+
 
 ## Release
-Either when a client wishes to release its lock or a session of a client expires, `Release()` is called for all corresponding locks. As in the case of `Acquire()`, a marshaled JSON of the `LockRequest` struct is sent to the lock server via HTTP to the `/release` endpoint. This struct would contain information of both the `object` that has to be released and the `sessionID`. The `sessionID` is important because it is used to ensure that only the process that requested the lock can release it. The condition for checking sessionID before performing a release would be: 
+Either when a client wishes to release its lock or a session of a client expires, `Release` is called for all corresponding locks. As in the case of `Acquire`, a marshaled JSON of the `LockRequest` struct is sent to the lock server via HTTP to the `/release` endpoint. This struct would contain information of both the `object` that has to be released and the `processID`. The `processID` is important because it is used to ensure that only the process that requested the lock can release it. The condition for checking processID before performing a release would be: 
 ```go
-if request.sessionID == SafeLockMap.LockMap[object] {
+if request.processID == SafeLockMap.LockMap[object] {
 	//release
 }
 ```
-If the release condition is met, the `object:sessionID` mapping is deleted from the `SafeLockMap`
+If the release condition is met, the `object:processID` mapping is deleted from the `SafeLockMap`
 
-## Check Release
-
-Is this needed?
 
 ## Lock Leasing (Expiry)
 We implement a 'lazy' approach to determine when a lock expires. When acquiring a lock, the service notes the timestamp in a map that mirrors `Lockmap`.
@@ -53,7 +51,7 @@ duration Duration
 It maps the object being locked to the timestamp at which it was locked. When the lockservice is required to verify if an entity posesses a lock or if a new entity wishes to acquire this lock, it can perform the following check:
 
 ```go
-if _ ,ok := LockMap[object]; !ok || time.Now() > (TimestampMap[object] + duration)
+if _ ,ok := LockMap[object]; !ok || time.Now > (TimestampMap[object] + duration)
 ```
 
 If the condition is satisfied, then the lock can be acquired. The if statement first checks if the object has ever been acquired. If not, it need not evaluate the second condition and the new entity can acquire the lock directly. However, if it has been acquired some time in the past and is present in the LockMap, then an additional check is performed using the timestamp that was recorded when the lock was acquired.  
