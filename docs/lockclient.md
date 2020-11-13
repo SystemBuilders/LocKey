@@ -10,7 +10,7 @@ This method allows the user process to establish a connection with the lock clie
 Function signature looks like this: `Connect() session.Session`. 
 
 ## Lock Acquire
-User processes can use the LC's `Acquire` method to acquire a lock in the LS on providing appropriate descriptors. This method starts a private session for the user process and further makes a HTTP call to the LS with a combination of the parameters of the user process and the session parameters. The unique combination of the paramters is what ensures the security of the lock in the LS. The `Acquire` method involves a pre-check of session parameters and the user process that ensures no HTTP call is made without ensuring the authenticity of the user. Once the LS has allocated a lock to this user process an appropriate response is returned. 
+User processes can use the LC's `Acquire` synchronous method to acquire a lock in the LS on providing appropriate descriptors. This method starts a private session for the user process and further makes a HTTP call to the LS with a combination of the parameters of the user process and the session parameters. The unique combination of the paramters is what ensures the security of the lock in the LS. The `Acquire` method involves a pre-check of session parameters and the user process that ensures no HTTP call is made without ensuring the authenticity of the user. Once the LS has allocated a lock to this user process an appropriate response is returned. 
   The lock lasts until the session and once the session expires, the LS removes the entry for the lock requested by this user either by a notification from the client or lazily when the next user requests for the lock.  
 
 ### Existance of a Cache
