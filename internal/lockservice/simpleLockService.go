@@ -10,7 +10,6 @@ import (
 // SafeLockMap is the lockserver's data structure
 type SafeLockMap struct {
 	LockMap       map[string]*LockMapEntry
-	TimestampMap  map[string]time.Time
 	LeaseDuration time.Duration
 	Mutex         sync.Mutex
 }
@@ -147,16 +146,15 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 
 	// If the lock is not present in the LockMap or
 	// the lock has expired, then allow the acquisition
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || getCurrentDuration(ls.lockMap.TimestampMap[sd.ID()]) > ls.lockMap.LeaseDuration {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || getCurrentDuration(ls.lockMap.LockMap[sd.ID()].timestamp) > ls.lockMap.LeaseDuration {
 		ls.lockMap.LockMap[sd.ID()] = NewLockMapEntry(sd.Owner(), time.Now())
-		ls.lockMap.TimestampMap[sd.ID()] = time.Now()
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
 			Str("descriptor", sd.ID()).
-			Str("owner", sd.Owner()).
-			Str("timestamp", ls.lockMap.TimestampMap[sd.ID()].String()).
+			Str("owner", ls.lockMap.LockMap[sd.ID()].owner).
+			Time("timestamp", ls.lockMap.LockMap[sd.ID()].timestamp).
 			Msg("locked")
 		return nil
 	}
@@ -178,7 +176,6 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 	// is allowed to release the lock
 	if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
 		delete(ls.lockMap.LockMap, sd.ID())
-		delete(ls.lockMap.TimestampMap, sd.ID())
 		ls.
 			log.
 			Debug().
@@ -214,14 +211,14 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 	ls.lockMap.Mutex.Lock()
 	id := sd.ID()
-	if owner, ok := ls.lockMap.LockMap[id]; ok {
+	if entry, ok := ls.lockMap.LockMap[id]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
 			Str("descriptor", id).
 			Msg("checkacquire success")
-		return owner, true
+		return entry.owner, true
 	}
 	ls.
 		log.

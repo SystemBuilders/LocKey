@@ -9,6 +9,6 @@ func (e Error) Error() string { return string(e) }
 // Rule of thumb, all errors start with a small letter and end with no full stop.
 const (
 	ErrElementDoesntExist   = Error("element doesn't exist in the cache")
-	ErrElementAlreadyExists = Error("element already exists in the cache")
+	ErrElementAlreadyExists = Error("")
 	ErrCacheDoesntExist     = Error("cache doesn't exist")
 )
