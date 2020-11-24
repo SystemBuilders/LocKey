@@ -1,6 +1,7 @@
 package lockservice
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -130,20 +131,35 @@ func NewObjectDescriptor(ObjectID string) *ObjectDescriptor {
 }
 
 // NewSimpleLockService creates and returns a new lock service ready to use.
-func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
+func NewSimpleLockService(log zerolog.Logger, leaseDuration time.Duration) *SimpleLockService {
 	safeLockMap := &SafeLockMap{
 		LockMap: make(map[string]*LockMapEntry),
 	}
+	safeLockMap.LeaseDuration = leaseDuration
 	return &SimpleLockService{
 		log:     log,
 		lockMap: safeLockMap,
 	}
 }
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Minute)
+	h := d / time.Hour
+	d -= h * time.Hour
+	ms := d / time.Microsecond
+	return fmt.Sprintf("%02d:%02d", h, ms)
+}
 
 // getCurrentDuration returns the duration between the current time
 // and the time at which a lock was required
-func getCurrentDuration(timestamp time.Time) time.Duration {
-	return time.Now().Sub(timestamp)
+func compareDuration(timestamp time.Time, lease time.Duration) bool {
+	// fmt.Printf("current: %s timestamp: %s duration: %s %s\n", time.Now().String(), timestamp.String(), fmtDuration(time.Now().Sub(timestamp)))
+	intDuration := int64(time.Now().Sub(timestamp))
+	intLease := int64(lease)
+	fmt.Printf("%d %d \n", intDuration, intLease)
+	if time.Now().Sub(timestamp) > lease {
+		return true
+	}
+	return false
 }
 
 // Acquire function lets a client acquire a lock on an object.
@@ -152,7 +168,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 
 	// If the lock is not present in the LockMap or
 	// the lock has expired, then allow the acquisition
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || getCurrentDuration(ls.lockMap.LockMap[sd.ID()].timestamp) > ls.lockMap.LeaseDuration {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || (ok && (compareDuration(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration))) {
 		ls.lockMap.LockMap[sd.ID()] = NewLockMapEntry(sd.Owner(), time.Now())
 		ls.lockMap.Mutex.Unlock()
 		ls.
@@ -180,7 +196,16 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	// Only the entity that posseses the lock for this object
 	// is allowed to release the lock
-	if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, hasn't been acquired")
+		ls.lockMap.Mutex.Unlock()
+		return ErrCantReleaseFile
+
+	} else if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
 		delete(ls.lockMap.LockMap, sd.ID())
 		ls.
 			log.
@@ -190,15 +215,6 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			Msg("released")
 		ls.lockMap.Mutex.Unlock()
 		return nil
-	} else if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
-		ls.
-			log.
-			Debug().
-			Str("descriptor", sd.ID()).
-			Msg("can't release, hasn't been acquired")
-		ls.lockMap.Mutex.Unlock()
-		return ErrCantReleaseFile
-
 	} else {
 		ls.
 			log.

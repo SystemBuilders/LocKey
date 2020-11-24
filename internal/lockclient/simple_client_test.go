@@ -17,7 +17,8 @@ func TestLockService(t *testing.T) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	duration := 2 * time.Second // 2 second expiry
+	ls := lockservice.NewSimpleLockService(log, duration)
 
 	quit := make(chan bool, 1)
 	go func() {
@@ -173,7 +174,7 @@ func BenchmarkLocKeyWithoutCache(b *testing.B) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	ls := lockservice.NewSimpleLockService(log, 5)
 
 	quit := make(chan bool, 1)
 	go func() {
@@ -211,7 +212,8 @@ func BenchmarkLocKeyWithCache(b *testing.B) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	duration := 2 * time.Second // 2 second expiry
+	ls := lockservice.NewSimpleLockService(log, duration)
 
 	quit := make(chan bool, 1)
 	go func() {
