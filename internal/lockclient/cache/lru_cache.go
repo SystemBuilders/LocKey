@@ -213,9 +213,13 @@ func (lru *LRUCache) deleteElementFromMap(key interface{}) error {
 	}
 	return nil
 }
+
+// printMap prints the LRU map and is concurrency safe.
 func (lru *LRUCache) printMap() {
+	lru.mu.Lock()
 	for k, v := range lru.m {
 		fmt.Printf("Key: %v, Value: ", k)
 		fmt.Printf("LN: %v, RN: %v, NodeKey: %v\n", v.Left(), v.Right(), v.Key())
 	}
+	lru.mu.Unlock()
 }
