@@ -155,12 +155,32 @@ func TestLockService(t *testing.T) {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		// Wait for the session to expire
-		time.Sleep(500 * time.Millisecond)
+		// Wait for the lock's lease to expire
+		time.Sleep(3 * time.Second)
+
 		got = sc.Release(d, session)
-		want = ErrSessionNonExistent
+		want = lockservice.ErrCantReleaseFile
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
+		}
+	})
+	t.Run("try acquiring after lock expiry; should succeed", func(t *testing.T) {
+		sc := NewSimpleClient(scfg, log, nil)
+		session := sc.Connect()
+		d := lockservice.NewObjectDescriptor("test2")
+
+		got := sc.Acquire(d, session)
+		var want error
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		// Wait for the lock's lease to expire
+		time.Sleep(3 * time.Second)
+
+		got = sc.Acquire(d, session)
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
 		}
 	})
 

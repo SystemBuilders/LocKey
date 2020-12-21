@@ -191,7 +191,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 }
 
 // Release lets a client to release a lock on an object.
-// TODO: Prevent a lock from being released if it has expired.
+// TODO: Prevent a lock from being released if it has expired. !!!!!!
 func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	// Only the entity that posseses the lock for this object
@@ -202,6 +202,16 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			Debug().
 			Str("descriptor", sd.ID()).
 			Msg("can't release, hasn't been acquired")
+		ls.lockMap.Mutex.Unlock()
+		return ErrCantReleaseFile
+
+	} else if compareDuration(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration) {
+		// lease expired
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, lease of lock has expired")
 		ls.lockMap.Mutex.Unlock()
 		return ErrCantReleaseFile
 

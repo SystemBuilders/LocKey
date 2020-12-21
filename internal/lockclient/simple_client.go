@@ -435,7 +435,9 @@ func (sc *SimpleClient) startSession(processID id.ID) {
 		sc.sessionTimers[processID] = timerChan
 		sc.mu.Unlock()
 		// Sessions last for 200ms.
-		time.Sleep(200 * time.Millisecond)
+		// changed to 10s just to test lock expiry
+		// TODO: Make the desired length of session expiry user configurable
+		time.Sleep(10000 * time.Millisecond)
 
 		sc.mu.Lock()
 		sc.sessionTimers[processID] <- struct{}{}
