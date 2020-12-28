@@ -150,7 +150,7 @@ func fmtDuration(d time.Duration) string {
 }
 
 // getCurrentDuration returns the duration between the current time
-// and the time at which a lock was required
+// and the time at which a lock was required.
 func compareDuration(timestamp time.Time, lease time.Duration) bool {
 	// fmt.Printf("current: %s timestamp: %s duration: %s %s\n", time.Now().String(), timestamp.String(), fmtDuration(time.Now().Sub(timestamp)))
 	intDuration := int64(time.Now().Sub(timestamp))
