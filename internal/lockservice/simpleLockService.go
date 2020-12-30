@@ -149,10 +149,9 @@ func fmtDuration(d time.Duration) string {
 	return fmt.Sprintf("%02d:%02d", h, ms)
 }
 
-// getCurrentDuration returns the duration between the current time
-// and the time at which a lock was required
-func compareDuration(timestamp time.Time, lease time.Duration) bool {
-	// fmt.Printf("current: %s timestamp: %s duration: %s %s\n", time.Now().String(), timestamp.String(), fmtDuration(time.Now().Sub(timestamp)))
+// hasLeaseExpired returns true if the lease for a lock has expired and
+// returns false if the lease is still valid
+func hasLeaseExpired(timestamp time.Time, lease time.Duration) bool {
 	intDuration := int64(time.Now().Sub(timestamp))
 	intLease := int64(lease)
 	fmt.Printf("%d %d \n", intDuration, intLease)
@@ -168,7 +167,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 
 	// If the lock is not present in the LockMap or
 	// the lock has expired, then allow the acquisition
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || (ok && (compareDuration(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration))) {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || hasLeaseExpired(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration) {
 		ls.lockMap.LockMap[sd.ID()] = NewLockMapEntry(sd.Owner(), time.Now())
 		ls.lockMap.Mutex.Unlock()
 		ls.
@@ -191,7 +190,6 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 }
 
 // Release lets a client to release a lock on an object.
-// TODO: Prevent a lock from being released if it has expired. !!!!!!
 func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 	// Only the entity that posseses the lock for this object
@@ -205,7 +203,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 		ls.lockMap.Mutex.Unlock()
 		return ErrCantReleaseFile
 
-	} else if compareDuration(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration) {
+	} else if hasLeaseExpired(ls.lockMap.LockMap[sd.ID()].timestamp, ls.lockMap.LeaseDuration) {
 		// lease expired
 		ls.
 			log.
