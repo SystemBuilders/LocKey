@@ -38,11 +38,13 @@ type SimpleClient struct {
 	// whether the process owning the lock has an active session
 	// or not, this guarantee has to be ensured by the client.
 	sessionAcquisitions map[id.ID][]lockservice.Descriptors
+
+	sessionDuration time.Duration
 }
 
 // NewSimpleClient returns a new SimpleClient of the given parameters.
 // This client works with or without the existance of a cache.
-func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache *cache.LRUCache) *SimpleClient {
+func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache *cache.LRUCache, sessionDuration time.Duration) *SimpleClient {
 	clientID := id.Create()
 	sessions := make(map[id.ID]session.Session)
 	sessionTimers := make(map[id.ID]chan struct{})
@@ -55,6 +57,7 @@ func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache
 		sessions:            sessions,
 		sessionTimers:       sessionTimers,
 		sessionAcquisitions: sessionAcquisitions,
+		sessionDuration:     sessionDuration,
 	}
 }
 
@@ -434,10 +437,8 @@ func (sc *SimpleClient) startSession(processID id.ID) {
 		sc.mu.Lock()
 		sc.sessionTimers[processID] = timerChan
 		sc.mu.Unlock()
-		// Sessions last for 200ms.
-		// changed to 10s just to test lock expiry
-		// TODO: Make the desired length of session expiry user configurable
-		time.Sleep(10000 * time.Millisecond)
+		// Sessions last for user configured duration
+		time.Sleep(sc.sessionDuration)
 
 		sc.mu.Lock()
 		sc.sessionTimers[processID] <- struct{}{}

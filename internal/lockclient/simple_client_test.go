@@ -18,6 +18,7 @@ func TestLockService(t *testing.T) {
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
 	duration := 2 * time.Second // 2 second expiry
+	sessionDuration := 5 * time.Second
 	ls := lockservice.NewSimpleLockService(log, duration)
 
 	quit := make(chan bool, 1)
@@ -43,7 +44,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 
@@ -77,7 +78,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test, acquire test, release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test")
@@ -105,7 +106,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test, trying to release test as another entity should fail", func(t *testing.T) {
 		size := 2
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test")
@@ -145,7 +146,7 @@ func TestLockService(t *testing.T) {
 	})
 
 	t.Run("acquire test and release after session expiry", func(t *testing.T) {
-		sc := NewSimpleClient(scfg, log, nil)
+		sc := NewSimpleClient(scfg, log, nil, sessionDuration)
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test3")
 
@@ -165,7 +166,7 @@ func TestLockService(t *testing.T) {
 		}
 	})
 	t.Run("try acquiring after lock expiry; should succeed", func(t *testing.T) {
-		sc := NewSimpleClient(scfg, log, nil)
+		sc := NewSimpleClient(scfg, log, nil, sessionDuration)
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test2")
 
@@ -209,7 +210,8 @@ func BenchmarkLocKeyWithoutCache(b *testing.B) {
 	}()
 	time.Sleep(100 * time.Millisecond)
 
-	sc := NewSimpleClient(scfg, log, nil)
+	sessionDuration := 5 * time.Second
+	sc := NewSimpleClient(scfg, log, nil, sessionDuration)
 	session := sc.Connect()
 	d := lockservice.NewObjectDescriptor("test")
 	for n := 0; n < b.N; n++ {
@@ -250,7 +252,8 @@ func BenchmarkLocKeyWithCache(b *testing.B) {
 
 	size := 5
 	cache := cache.NewLRUCache(size)
-	sc := NewSimpleClient(scfg, log, cache)
+	sessionDuration := 5 * time.Second
+	sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 	session := sc.Connect()
 	d := lockservice.NewObjectDescriptor("test")
 	for n := 0; n < b.N; n++ {
