@@ -162,6 +162,10 @@ func hasLeaseExpired(timestamp time.Time, lease time.Duration) bool {
 }
 
 // Acquire function lets a client acquire a lock on an object.
+// This lock is valid for a fixed duration that is set in the SafeLockMap.LeaseDuration
+// field. Beyond this duration, the lock has expired and the entity that owned the lock
+// for this period can no longer release it. The lock is open for acquisition after it
+// has expired.
 func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
 
@@ -180,6 +184,7 @@ func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 		return nil
 	}
 	ls.lockMap.Mutex.Unlock()
+	// Since the lock is already acquired, return an error
 	ls.
 		log.
 		Debug().
@@ -195,6 +200,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 	// Only the entity that posseses the lock for this object
 	// is allowed to release the lock
 	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
+		// trying to release an unacquired lock
 		ls.
 			log.
 			Debug().
@@ -214,6 +220,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 		return ErrCantReleaseFile
 
 	} else if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
+		// conditions satisfied, lock is released
 		delete(ls.lockMap.LockMap, sd.ID())
 		ls.
 			log.
@@ -224,6 +231,7 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 		ls.lockMap.Mutex.Unlock()
 		return nil
 	} else {
+		// trying to release a lock that you don't own
 		ls.
 			log.
 			Debug().
