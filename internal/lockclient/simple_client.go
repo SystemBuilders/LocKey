@@ -44,7 +44,8 @@ type SimpleClient struct {
 
 // NewSimpleClient returns a new SimpleClient of the given parameters.
 // This client works with or without the existance of a cache.
-func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache *cache.LRUCache, sessionDuration time.Duration) *SimpleClient {
+func NewSimpleClient(config *lockservice.SimpleConfig, log zerolog.Logger, cache *cache.LRUCache,
+	sessionDuration time.Duration) *SimpleClient {
 	clientID := id.Create()
 	sessions := make(map[id.ID]session.Session)
 	sessionTimers := make(map[id.ID]chan struct{})
@@ -437,7 +438,7 @@ func (sc *SimpleClient) startSession(processID id.ID) {
 		sc.mu.Lock()
 		sc.sessionTimers[processID] = timerChan
 		sc.mu.Unlock()
-		// Sessions last for user configured duration
+		// Sessions last for user configured duration.
 		time.Sleep(sc.sessionDuration)
 
 		sc.mu.Lock()
