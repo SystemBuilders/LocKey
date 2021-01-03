@@ -1,15 +1,27 @@
 package lockservice
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 )
 
 // SafeLockMap is the lockserver's data structure
 type SafeLockMap struct {
-	LockMap map[string]string
-	Mutex   sync.Mutex
+	LockMap       map[string]*LockMapEntry
+	LeaseDuration time.Duration
+	Mutex         sync.Mutex
+}
+
+// LockMapEntry defines the structure for objects placed
+// in the LockMap. It consists of the owner of the lock
+// that is acquired and the timestamp at which the
+// acquisition took place.
+type LockMapEntry struct {
+	owner     string
+	timestamp time.Time
 }
 
 // SimpleConfig implements Config.
@@ -87,6 +99,14 @@ func (sd *LockDescriptor) Owner() string {
 	return sd.UserID
 }
 
+// NewLockMapEntry returns an instance of a LockMapEntry
+func NewLockMapEntry(owner string, timestamp time.Time) *LockMapEntry {
+	return &LockMapEntry{
+		owner:     owner,
+		timestamp: timestamp,
+	}
+}
+
 // NewSimpleConfig returns an instance of the SimpleConfig.
 func NewSimpleConfig(IPAddr, PortAddr string) *SimpleConfig {
 	return &SimpleConfig{
@@ -111,45 +131,97 @@ func NewObjectDescriptor(ObjectID string) *ObjectDescriptor {
 }
 
 // NewSimpleLockService creates and returns a new lock service ready to use.
-func NewSimpleLockService(log zerolog.Logger) *SimpleLockService {
+func NewSimpleLockService(log zerolog.Logger, leaseDuration time.Duration) *SimpleLockService {
 	safeLockMap := &SafeLockMap{
-		LockMap: make(map[string]string),
+		LockMap: make(map[string]*LockMapEntry),
 	}
+	safeLockMap.LeaseDuration = leaseDuration
 	return &SimpleLockService{
 		log:     log,
 		lockMap: safeLockMap,
 	}
 }
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Minute)
+	h := d / time.Hour
+	d -= h * time.Hour
+	ms := d / time.Microsecond
+	return fmt.Sprintf("%02d:%02d", h, ms)
+}
+
+// hasLeaseExpired returns true if the lease for a lock has expired and
+// false if the lease is still valid
+func hasLeaseExpired(timestamp time.Time, lease time.Duration) bool {
+	if time.Now().Sub(timestamp) > lease {
+		return true
+	}
+	return false
+}
 
 // Acquire function lets a client acquire a lock on an object.
+// This lock is valid for a fixed duration that is set in the SafeLockMap.LeaseDuration
+// field. Beyond this duration, the lock has expired and the entity that owned the lock
+// for this period can no longer release it. The lock is open for acquisition after it
+// has expired.
 func (ls *SimpleLockService) Acquire(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
-	if _, ok := ls.lockMap.LockMap[sd.ID()]; ok {
+
+	timestamp := ls.lockMap.LockMap[sd.ID()].timestamp
+	duration := ls.lockMap.LeaseDuration
+	// If the lock is not present in the LockMap or
+	// the lock has expired, then allow the acquisition
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok || hasLeaseExpired(timestamp, duration) {
+		ls.lockMap.LockMap[sd.ID()] = NewLockMapEntry(sd.Owner(), time.Now())
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
 			Str("descriptor", sd.ID()).
-			Msg("can't acquire, already been acquired")
-		return ErrFileacquired
+			Str("owner", ls.lockMap.LockMap[sd.ID()].owner).
+			Time("timestamp", ls.lockMap.LockMap[sd.ID()].timestamp).
+			Msg("locked")
+		return nil
 	}
-	ls.lockMap.LockMap[sd.ID()] = sd.Owner()
 	ls.lockMap.Mutex.Unlock()
+	// Since the lock is already acquired, return an error
 	ls.
 		log.
 		Debug().
 		Str("descriptor", sd.ID()).
-		Str("owner", sd.Owner()).
-		Msg("locked")
-	return nil
+		Msg("can't acquire, already been acquired")
+	return ErrFileacquired
+
 }
 
 // Release lets a client to release a lock on an object.
 func (ls *SimpleLockService) Release(sd Descriptors) error {
 	ls.lockMap.Mutex.Lock()
+	timestamp := ls.lockMap.LockMap[sd.ID()].timestamp
+	duration := ls.lockMap.LeaseDuration
 	// Only the entity that posseses the lock for this object
 	// is allowed to release the lock
-	if ls.lockMap.LockMap[sd.ID()] == sd.Owner() {
+	if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
+		// trying to release an unacquired lock
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, hasn't been acquired")
+		ls.lockMap.Mutex.Unlock()
+		return ErrCantReleaseFile
+
+	} else if hasLeaseExpired(timestamp, duration) {
+		// lease expired
+		ls.
+			log.
+			Debug().
+			Str("descriptor", sd.ID()).
+			Msg("can't release, lease of lock has expired")
+		ls.lockMap.Mutex.Unlock()
+		return ErrCantReleaseFile
+
+	} else if ls.lockMap.LockMap[sd.ID()].owner == sd.Owner() {
+		// conditions satisfied, lock is released
 		delete(ls.lockMap.LockMap, sd.ID())
 		ls.
 			log.
@@ -159,16 +231,8 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 			Msg("released")
 		ls.lockMap.Mutex.Unlock()
 		return nil
-	} else if _, ok := ls.lockMap.LockMap[sd.ID()]; !ok {
-		ls.
-			log.
-			Debug().
-			Str("descriptor", sd.ID()).
-			Msg("can't release, hasn't been acquired")
-		ls.lockMap.Mutex.Unlock()
-		return ErrCantReleaseFile
-
 	} else {
+		// trying to release a lock that you don't own
 		ls.
 			log.
 			Debug().
@@ -186,14 +250,14 @@ func (ls *SimpleLockService) Release(sd Descriptors) error {
 func (ls *SimpleLockService) CheckAcquired(sd Descriptors) (string, bool) {
 	ls.lockMap.Mutex.Lock()
 	id := sd.ID()
-	if owner, ok := ls.lockMap.LockMap[id]; ok {
+	if entry, ok := ls.lockMap.LockMap[id]; ok {
 		ls.lockMap.Mutex.Unlock()
 		ls.
 			log.
 			Debug().
 			Str("descriptor", id).
 			Msg("checkacquire success")
-		return owner, true
+		return entry.owner, true
 	}
 	ls.
 		log.

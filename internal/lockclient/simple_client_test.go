@@ -17,7 +17,9 @@ func TestLockService(t *testing.T) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	duration := 2 * time.Second // 2 second expiry
+	sessionDuration := 5 * time.Second
+	ls := lockservice.NewSimpleLockService(log, duration)
 
 	quit := make(chan bool, 1)
 	go func() {
@@ -42,7 +44,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 
@@ -76,7 +78,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test, acquire test, release test", func(t *testing.T) {
 		size := 5
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test")
@@ -104,7 +106,7 @@ func TestLockService(t *testing.T) {
 	t.Run("acquire test, trying to release test as another entity should fail", func(t *testing.T) {
 		size := 2
 		cache := cache.NewLRUCache(size)
-		sc := NewSimpleClient(scfg, log, cache)
+		sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test")
@@ -144,7 +146,7 @@ func TestLockService(t *testing.T) {
 	})
 
 	t.Run("acquire test and release after session expiry", func(t *testing.T) {
-		sc := NewSimpleClient(scfg, log, nil)
+		sc := NewSimpleClient(scfg, log, nil, sessionDuration)
 		session := sc.Connect()
 		d := lockservice.NewObjectDescriptor("test3")
 
@@ -154,12 +156,32 @@ func TestLockService(t *testing.T) {
 			t.Errorf("acquire: got %q want %q", got, want)
 		}
 
-		// Wait for the session to expire
-		time.Sleep(500 * time.Millisecond)
+		// Wait for the lock's lease to expire
+		time.Sleep(3 * time.Second)
+
 		got = sc.Release(d, session)
-		want = ErrSessionNonExistent
+		want = lockservice.ErrCantReleaseFile
 		if got != want {
 			t.Errorf("release: got %q want %q", got, want)
+		}
+	})
+	t.Run("try acquiring after lock expiry; should succeed", func(t *testing.T) {
+		sc := NewSimpleClient(scfg, log, nil, sessionDuration)
+		session := sc.Connect()
+		d := lockservice.NewObjectDescriptor("test2")
+
+		got := sc.Acquire(d, session)
+		var want error
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
+		}
+
+		// Wait for the lock's lease to expire
+		time.Sleep(3 * time.Second)
+
+		got = sc.Acquire(d, session)
+		if got != want {
+			t.Errorf("acquire: got %q want %q", got, want)
 		}
 	})
 
@@ -173,7 +195,7 @@ func BenchmarkLocKeyWithoutCache(b *testing.B) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	ls := lockservice.NewSimpleLockService(log, 5)
 
 	quit := make(chan bool, 1)
 	go func() {
@@ -188,7 +210,8 @@ func BenchmarkLocKeyWithoutCache(b *testing.B) {
 	}()
 	time.Sleep(100 * time.Millisecond)
 
-	sc := NewSimpleClient(scfg, log, nil)
+	sessionDuration := 5 * time.Second
+	sc := NewSimpleClient(scfg, log, nil, sessionDuration)
 	session := sc.Connect()
 	d := lockservice.NewObjectDescriptor("test")
 	for n := 0; n < b.N; n++ {
@@ -211,7 +234,8 @@ func BenchmarkLocKeyWithCache(b *testing.B) {
 
 	log := zerolog.New(os.Stdout).With().Logger().Level(zerolog.GlobalLevel())
 	scfg := lockservice.NewSimpleConfig("http://127.0.0.1", "1234")
-	ls := lockservice.NewSimpleLockService(log)
+	duration := 2 * time.Second // 2 second expiry
+	ls := lockservice.NewSimpleLockService(log, duration)
 
 	quit := make(chan bool, 1)
 	go func() {
@@ -228,7 +252,8 @@ func BenchmarkLocKeyWithCache(b *testing.B) {
 
 	size := 5
 	cache := cache.NewLRUCache(size)
-	sc := NewSimpleClient(scfg, log, cache)
+	sessionDuration := 5 * time.Second
+	sc := NewSimpleClient(scfg, log, cache, sessionDuration)
 	session := sc.Connect()
 	d := lockservice.NewObjectDescriptor("test")
 	for n := 0; n < b.N; n++ {
